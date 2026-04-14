@@ -11,13 +11,13 @@ import sksurv.metrics
 import sksurv.util
 from sksurv.metrics import integrated_brier_score
 from sklearn.exceptions import ConvergenceWarning
-from architectures import MLP_SolidBiopsy 
-from architectures import SHERLOC
-from architectures import Featurewise_Transformer
-from architectures import Temporal_Transformer
-from architectures import RNN_timesteps
-from architectures import GRU_timesteps
-from architectures import MLP_DeepSurv
+from models.Genomic_Interaction_Encoder.MLP_SolidBiopsy import MLP_SolidBiopsy 
+from models.SHERLOC import SHERLOC
+from models.Featurewise_Transformer import Featurewise_Transformer
+from models.Temporal_Transformer import Temporal_Transformer
+from models.RNN import RNN_timesteps
+from models.GRU import GRU_timesteps
+from models.MLP_DeepSurv import MLP_DeepSurv
 
 from warnings import simplefilter
 simplefilter("ignore", category=ConvergenceWarning)
