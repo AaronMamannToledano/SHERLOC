@@ -2,8 +2,8 @@ import torch
 from torch.nn import Module   
 
 class RNN_timesteps(Module):
-    def __init__(self, d_input: int, d_agg_input: int, d_channel: int, d_output: int, d_hidden: int, d_other_input: int,
-                 nb_filters: int, device: str, dropout: float = 0.1, weights_solid_biopsy=None):
+    def __init__(self, d_input: int, d_agg_input: int, d_channel: int, d_output: int, 
+                 d_other_input: int, device: str):
         super(RNN_timesteps, self).__init__() 
         """
         Recurrent Neural Network (RNN) for learning a representation of the gene-level VAF features 

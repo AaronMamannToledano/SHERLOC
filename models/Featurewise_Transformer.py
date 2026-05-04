@@ -1,10 +1,10 @@
 import torch
 from torch.nn import Module
-from attention_methods import Attention_channels
+from models.attention_methods import Attention_channels
 
 class Featurewise_Transformer(Module):
     def __init__(self, d_input: int, d_agg_input: int, d_channel: int, d_output: int, d_other_input: int,
-                 device: str, dropout: float = 0.1):
+                 device: str):
         super(Featurewise_Transformer, self).__init__() 
         """
         Feature-wise Transformer for learning a representation of the gene-level VAF features 

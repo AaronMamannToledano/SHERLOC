@@ -365,36 +365,27 @@ def deep_model(method, timepoints, df_pretraining, df_genes, df_list_genes, df_c
         d_other_input = train_dataset[0][2].shape[1]
         d_agg_input = train_dataset[0][3].shape[0]
         d_output = 1  
-        d_hidden = 5
-        dropout = 0.3
-        nb_filters = 1
         DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
 
         # Initialize the main survival prediction model with the selected architecture
-        if method=='Featurewise_Transformer':
-            net = Featurewise_Transformer(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
-                            d_output=d_output, d_hidden=d_hidden, nb_filters=nb_filters, dropout=dropout, 
-                            device=DEVICE)
-        if method=='Temporal_Transformer':
-            net = Temporal_Transformer(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
-                            d_output=d_output, d_hidden=d_hidden, nb_filters=nb_filters, dropout=dropout, 
-                            device=DEVICE)
-        if method=='RNN':
-            net = RNN_timesteps(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
-                            d_output=d_output, d_hidden=d_hidden, nb_filters=nb_filters, dropout=dropout, 
-                            device=DEVICE)
-        if method=='GRU':
-            net = GRU_timesteps(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
-                            d_output=d_output, d_hidden=d_hidden, nb_filters=nb_filters, dropout=dropout, 
-                            device=DEVICE)
-        if method=='MLP':
-            net = MLP_DeepSurv(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
-                            d_output=d_output, d_hidden=d_hidden, nb_filters=nb_filters, dropout=dropout, 
-                            device=DEVICE)
         if method=='Proposed_Method':
             net = SHERLOC(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
-                            d_output=d_output, d_hidden=d_hidden, nb_filters=nb_filters, dropout=dropout, 
-                            device=DEVICE)
+                            d_output=d_output, device=DEVICE)
+        if method=='Featurewise_Transformer':
+            net = Featurewise_Transformer(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
+                            d_output=d_output, device=DEVICE)
+        if method=='Temporal_Transformer':
+            net = Temporal_Transformer(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
+                            d_output=d_output, device=DEVICE)
+        if method=='RNN':
+            net = RNN_timesteps(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
+                            d_output=d_output, device=DEVICE)
+        if method=='GRU':
+            net = GRU_timesteps(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
+                            d_output=d_output, device=DEVICE)
+        if method=='MLP':
+            net = MLP_DeepSurv(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
+                            d_output=d_output, device=DEVICE)
         
         # Select the loss function for training the model, which is the Cox Proportional Hazards loss for survival analysis, 
         # and the optimizer, which is Adam. Train the model on the training set of the IMPower150          
@@ -461,19 +452,6 @@ def deep_model(method, timepoints, df_pretraining, df_genes, df_list_genes, df_c
         IBS = np.append(IBS,ibs_1)
         print('IBS', ibs_1)
                 
-
-    print('C-uno')
-    print(C_INDEX.mean())
-    print(C_INDEX.std())
-
-    print('AUC')
-    print(AUC.mean())
-    print(AUC.std())
-
-    print('IBS')
-    print(IBS.mean())
-    print(IBS.std())
-
     df_results = pd.DataFrame({
         "C-index": C_INDEX,
         "AUC": AUC,

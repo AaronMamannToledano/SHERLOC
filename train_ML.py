@@ -19,7 +19,7 @@ from sksurv.metrics import integrated_brier_score
 from sklearn.utils._testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 from sksurv.linear_model import CoxnetSurvivalAnalysis
-from architectures import MLP_SolidBiopsy 
+from models.Genomic_Interaction_Encoder.MLP_SolidBiopsy import MLP_SolidBiopsy 
 from sksurv.ensemble import RandomSurvivalForest
 from warnings import simplefilter
 simplefilter("ignore", category=ConvergenceWarning)
