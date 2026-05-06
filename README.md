@@ -72,10 +72,10 @@ pip install -e .
 
 ## 💻 Usage
 
-To run the model, use the module flag from the project root. This ensures all internal paths are resolved correctly:
+To run one of the proposed deep learning models, use the module flag from the project root. This ensures all internal paths are resolved correctly:
 
 ```bash
-python -m scripts.train --config path/to/your_config.yaml
+python -m scripts.train_DL --config path/to/your_config.yaml
 ```
 
 
