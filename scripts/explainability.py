@@ -1,3 +1,7 @@
+import os
+# 1. Fix the macOS OpenMP conflict
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+# 2. Standard Imports
 import numpy as np
 import pandas as pd
 from tqdm.notebook import tqdm

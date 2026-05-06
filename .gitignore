@@ -5,6 +5,16 @@ __pycache__/
 venv/
 .env
 
+# Distribution / packaging
+eggs/
+.eggs/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+*.egg
+
 # --- R ---
 .Rhistory
 .RData

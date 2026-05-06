@@ -1,6 +1,6 @@
 import torch
 from torch.nn import Module
-from models.attention_methods import Attention_channels
+from attention_methods import Attention_channels
 
 class Featurewise_Transformer(Module):
     def __init__(self, d_input: int, d_agg_input: int, d_channel: int, d_output: int, d_other_input: int,
