@@ -9,8 +9,8 @@ import torchtuples as tt
 from pycox.models import CoxPH
 import torch.optim as optim
 from sklearn.exceptions import ConvergenceWarning
-from models.Genomic_Interaction_Encoder.MLP_SolidBiopsy import MLP_SolidBiopsy 
-from models.SHERLOC import SHERLOC
+from DL_models.Genomic_Interaction_Encoder.MLP_SolidBiopsy import MLP_SolidBiopsy 
+from DL_models.SHERLOC import SHERLOC
 from utils import calculate_corrected_confidence_intervals
 from warnings import simplefilter
 simplefilter("ignore", category=ConvergenceWarning)
@@ -479,6 +479,7 @@ def explainability(timepoints, df_pretraining, df_genes, df_cln_vars, df_clinica
 # of each feature in the SHERLOC model trained on the IMpower150 dataset.
 
 timepoints = ['BL','C2D1','C3D1','C4D1']
+d_channel = len(timepoints)
 df_pretraining = pd.read_csv('/Users/aaronmamann/Downloads/msk_chord_2024/data_mutations.txt', sep='\t')
 df_genes = pd.read_csv(''.join(("/Users/aaronmamann/Documents/ImPower150_Genes_",str(d_channel),".csv")),index_col=0)
 df_cln_vars = pd.read_csv('/Users/aaronmamann/Downloads/msk_chord_2024/data_clinical_sample.txt', sep='\t', skiprows=4)
@@ -490,5 +491,5 @@ path_save_results_file = "/Users/aaronmamann/Documents/SHERLOC_Results.csv"
 
 explainability(timepoints=timepoints, df_pretraining=df_pretraining, df_genes=df_genes, 
                df_cln_vars=df_cln_vars, df_clinical_MSK=df_clinical_MSK, 
-                df_list_genes=df_list_genes, df_gene_ctDNA=df_gene_ctDNA, 
-                df_panel_ctDNA=df_panel_ctDNA, path_save_results_file=path_save_results_file)
+               df_list_genes=df_list_genes, df_gene_ctDNA=df_gene_ctDNA, 
+               df_panel_ctDNA=df_panel_ctDNA, path_save_results_file=path_save_results_file)

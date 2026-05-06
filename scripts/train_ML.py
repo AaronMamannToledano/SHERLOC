@@ -19,7 +19,7 @@ from sksurv.metrics import integrated_brier_score
 from sklearn.utils._testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 from sksurv.linear_model import CoxnetSurvivalAnalysis
-from models.Genomic_Interaction_Encoder.MLP_SolidBiopsy import MLP_SolidBiopsy 
+from DL_models.Genomic_Interaction_Encoder.MLP_SolidBiopsy import MLP_SolidBiopsy 
 from sksurv.ensemble import RandomSurvivalForest
 from warnings import simplefilter
 simplefilter("ignore", category=ConvergenceWarning)
@@ -160,10 +160,6 @@ def ML_model(method, sub_method, timepoints, df_pretraining, df_genes, df_list_g
                 
             return gene_features, targets, cln_features
         
-
-
-    
-
 
     # Set random seeds for reproducibility, and define function to extract survival time 
     # and event information from dataset 
