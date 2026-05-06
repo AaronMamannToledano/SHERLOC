@@ -46,33 +46,36 @@ SHERLOC/
 ├── setup.py                     # Project installation script
 ├── requirements.txt             # Dependencies
 └── README.md
+```
 
-
-🛠 Technical Setup & Installation
+## 🛠 Technical Setup & Installation
 
 To ensure the DL_models package is recognized correctly across the project and to avoid ModuleNotFoundError, follow these installation steps:
-1. Clone & Environment
-Bash
 
-git clone [https://github.com/AaronMamannToledano/SHERLOC.git](https://github.com/AaronMamannToledano/SHERLOC.git)
+### 1. Clone & Environment
+
+```bash
+git clone https://github.com/AaronMamannToledano/SHERLOC.git
 cd SHERLOC
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+```
 
-2. Install SHERLOC Package
-Install the repository in editable mode. This allows the scripts in the scripts/ folder to import from DL_models seamlessly:
-Bash
+### 2. Install SHERLOC Package
 
+Install the repository in editable mode. This allows the scripts in the `scripts/` folder to import from `DL_models` seamlessly:
+
+```bash
 pip install -e .
+```
 
-💻 Usage
+## 💻 Usage
+
 To run the model, use the module flag from the project root. This ensures all internal paths are resolved correctly:
-Bash
 
+```bash
 python -m scripts.train --config path/to/your_config.yaml
+```
 
-📝 Citation
-If you use SHERLOC in your research, please cite our work:
-SHERLOC: An interpretable deep learning model for longitudinal ctDNA data in survival analysis.
-A. Mamann, J. Das, H. Benkirane, F. Bugiotti, E. Bernard, B. Besse, S. Michiels, and P.H. Cournède 
+
