@@ -39,7 +39,7 @@ SHERLOC/
 │   │   ├── __init__.py
 │   │   └── MLP_SolidBiopsy.py          # Pre-trained tissue encoder
 │   └── utils.py                        # Attention-based architecture 
-
+│
 ├── scripts/                        
 │   ├── __init__.py
 │   ├── data/
