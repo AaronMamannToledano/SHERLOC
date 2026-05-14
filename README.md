@@ -1,6 +1,6 @@
 # SHERLOC
 
-<img width="600" alt="SHERLOC_Logo" src="https://github.com/user-attachments/assets/df1d6ac3-1371-47b8-a50d-7705dfcc757a" />
+<img width="500" alt="SHERLOC_Logo" src="https://github.com/user-attachments/assets/df1d6ac3-1371-47b8-a50d-7705dfcc757a" />
 
 **SHERLOC: An interpretable deep learning model for longitudinal ctDNA data in survival analysis**
 
