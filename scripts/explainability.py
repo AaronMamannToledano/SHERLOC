@@ -4,9 +4,9 @@ explainability.py — Feature-importance analysis for the trained SHERLOC model.
 Pipeline
 --------
 1. Pretrain the genomic-interaction encoder (MLP_SolidBiopsy) on the
-   pretraining cohort.                                       [shared_utils]
+   pretraining cohort.                                       [utils]
 2. Load the longitudinal target cohort and extract latent gene features
-   from the frozen encoder.                                  [shared_utils]
+   from the frozen encoder.                                  [utils]
 3. Train SHERLOC once on a fixed, reproducible train/val split (seed from
    config) using the full training procedure from train_DL.py.
 4. Bootstrap output-layer retraining (default: 100 iterations):
@@ -48,7 +48,7 @@ from tqdm import tqdm
 from sherloc.ctDNA_Dynamics_Encoder.SHERLOC import SHERLOC
 
 # ── shared pipeline utilities ─────────────────────────────────────────────────
-from shared_utils import (
+from scripts.utils import (
     load_config,
     resolve_path,
     validate_config,
@@ -164,7 +164,7 @@ def explainability(cfg: dict) -> None:
     print(f"[INFO] Bootstrap:   {n_bootstrap} iterations")
     print(f"[INFO] Results ->   {result_path}")
 
-    # ── 1. Pretraining (shared_utils) ─────────────────────────────────────────
+    # ── 1. Pretraining (utils) ────────────────────────────────────────────────
     print("[INFO] Loading pretraining data ...")
     df_pretrain, gene_names, cln_names = prepare_pretraining_data(cfg)
     print(
@@ -176,7 +176,7 @@ def explainability(cfg: dict) -> None:
     net_SB = pretrain_encoder(df_pretrain, gene_names, cln_names, cfg)
     print("[INFO] Pretraining complete.")
 
-    # ── 2. Target cohort (shared_utils) ───────────────────────────────────────
+    # ── 2. Target cohort (utils) ──────────────────────────────────────────────
     df_list_genes = load_dataframe(
         resolve_path(cfg["paths"]["genes_kept_restricted"], n_tp), index_col=0
     )

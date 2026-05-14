@@ -4,10 +4,10 @@ train_DL.py — Deep learning survival models with a pre-trained genomic encoder
 Pipeline
 --------
 1. Pretrain a genomic-interaction encoder (MLP_SolidBiopsy) on the pretraining
-   cohort (e.g. MSK-CHORD) using the Cox PH loss.           [shared_utils]
+   cohort (e.g. MSK-CHORD) using the Cox PH loss.           [utils]
 2. Extract per-patient latent gene features from the frozen encoder at every
-   configured longitudinal timepoint.                        [shared_utils]
-3. Load and merge the longitudinal target-cohort files.      [shared_utils]
+   configured longitudinal timepoint.                       [utils]
+3. Load and merge the longitudinal target-cohort files.     [utils]
 4. Run Monte-Carlo Cross-Validation (default: 100 seeds) on the target cohort
    (e.g. IMpower150) with the selected deep learning model:
    - ``Proposed_Method``        : SHERLOC
@@ -57,9 +57,9 @@ from sherloc.ctDNA_Dynamics_Encoder.MLP_DeepSurv import MLP_DeepSurv
 
 # ── shared pipeline utilities ─────────────────────────────────────────────────
 # Data loading, pretraining, and latent feature extraction are all centralised
-# in shared_utils so that train_DL.py and train_ML.py stay in sync without
+# in utils so that train_DL.py and train_ML.py stay in sync without
 # code duplication.
-from shared_utils import (
+from scripts.utils import (
     load_config,
     resolve_path,
     validate_config,
@@ -173,7 +173,7 @@ def deep_model(cfg: dict) -> None:
     Monte-Carlo CV -> result export.
 
     All data loading, pretraining, and latent feature extraction are
-    delegated to ``shared_utils``; this function owns only the DL
+    delegated to ``utils``; this function owns only the DL
     training loop and evaluation.
 
     Args:
@@ -203,7 +203,7 @@ def deep_model(cfg: dict) -> None:
     print(f"[INFO] Timepoints: {timepoints}")
     print(f"[INFO] Results ->  {result_path}")
 
-    # ── 1. Pretraining data preparation (shared_utils) ────────────────────────
+    # ── 1. Pretraining data preparation (utils) ───────────────────────────────
     print("[INFO] Loading pretraining data ...")
     df_pretrain, gene_names, cln_names = prepare_pretraining_data(cfg)
     print(
@@ -211,12 +211,12 @@ def deep_model(cfg: dict) -> None:
         f"{len(gene_names)} genes | {len(cln_names)} clinical features"
     )
 
-    # ── 2. Pretrain genomic-interaction encoder (shared_utils) ────────────────
+    # ── 2. Pretrain genomic-interaction encoder (utils) ───────────────────────
     print("[INFO] Pretraining genomic-interaction encoder ...")
     net_SB = pretrain_encoder(df_pretrain, gene_names, cln_names, cfg)
     print("[INFO] Pretraining complete.")
 
-    # ── 3. Load target cohort (shared_utils) ──────────────────────────────────
+    # ── 3. Load target cohort (utils) ─────────────────────────────────────────
     df_list_genes = load_dataframe(
         resolve_path(cfg["paths"]["genes_kept_restricted"], n_tp), index_col=0
     )
@@ -255,7 +255,7 @@ def deep_model(cfg: dict) -> None:
         df_val       = df_train_val.sample(frac=tr_hp["val_frac"], random_state=seed)
         df_train     = df_train_val.drop(df_val.index)
 
-        # ── latent encoder features (shared_utils) ────────────────────
+        # ── latent encoder features (utils) ───────────────────────────
         lat_train = extract_latent_features(df_train, net_SB, gene_names, timepoints)
         lat_val   = extract_latent_features(df_val,   net_SB, gene_names, timepoints)
         lat_test  = extract_latent_features(df_test,  net_SB, gene_names, timepoints)
@@ -413,6 +413,6 @@ if __name__ == "__main__":
     if args.output_dir:
         cfg["paths"]["output_dir"] = args.output_dir
 
-    # mode="dl" checks cfg["method"] against VALID_DL_METHODS in shared_utils
+    # mode="dl" checks cfg["method"] against VALID_DL_METHODS in utils
     validate_config(cfg, mode="dl")
     deep_model(cfg)

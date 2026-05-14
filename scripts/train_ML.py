@@ -44,7 +44,7 @@ from sksurv.linear_model import CoxnetSurvivalAnalysis
 from sksurv.ensemble import RandomSurvivalForest
 from sklearn.model_selection import GridSearchCV, KFold
 
-from shared_utils import (
+from scripts.utils import (
     load_config,
     resolve_path,
     validate_config,
