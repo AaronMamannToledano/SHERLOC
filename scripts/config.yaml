@@ -186,3 +186,65 @@ explainability:
   # encoder_repr_dims: number of output dimensions from MLP_SolidBiopsy encoder.
   # Changes here must match the encoder architecture.
   encoder_repr_dims: 2
+
+# ── Joint Model / R script (train_jm.R) ──────────────────────────
+# Used only by train_jm.R; ignored by Python scripts.
+joint_model:
+
+  # ── Column names in the R longitudinal dataset ──────────────────
+  survival_time_col:  "TTEOS_rebaseline_BL"  # continuous OS/PFS time
+  survival_event_col: "OS_event"             # 0/1 event indicator
+  patient_id_col:     "index"                # unique patient identifier
+  timepoint_col:      "timepoint"            # categorical timepoint label
+
+  # ── Timepoint → numeric conversion ──────────────────────────────
+  # Maps each timepoint label to its numeric value (e.g. months or cycles).
+  # The LME submodels in JMbayes2 require a continuous time variable.
+  # Add or rename entries to match your cohort's collection schedule.
+  timepoint_numeric:
+    BL:   0.00
+    C2D1: 0.75
+    C3D1: 1.50
+    C4D1: 2.25
+
+  # ── Column group prefixes ────────────────────────────────────────
+  # Columns whose names start with these prefixes are automatically
+  # identified as clinical covariates or latent encoder features and
+  # included in the Cox survival submodel.
+  clinical_prefix: "cln_"
+  encoder_prefix:  "X"
+
+  # ── Feature selection ────────────────────────────────────────────
+  # A feature is excluded from the LME submodels if it is non-zero
+  # in fewer than threshold_feature_frequency × 100 % of training patients.
+  # Removing rare features improves MCMC convergence.
+  threshold_feature_frequency: 0.05
+
+  # ── MCMC settings for JMbayes2 ───────────────────────────────────
+  n_iter:   4000   # total MCMC iterations (default in JMbayes2: 3500)
+  n_burnin: 1000   # burn-in iterations   (default in JMbayes2:  500)
+
+  # ── Evaluation time grid ─────────────────────────────────────────
+  eval_time_start: 2.5    # lower bound for IBS / AUC time grid (months)
+  eval_time_end:   40.0   # upper bound for IBS / AUC time grid (months)
+  eval_time_step:  5.0    # step between time points in the grid
+  auc_tstart:      2.1    # Tstart argument passed to tvAUC
+
+  # ── Reproducibility ──────────────────────────────────────────────
+  seed:         3
+  n_experiments: 100    # number of train/test splits to evaluate
+
+  # ── SLURM options (used by rslurm for parallel execution) ────────
+  # Set use_slurm: false to run sequentially without a SLURM cluster.
+  use_slurm: true
+  slurm:
+    time:          "04:00:00"
+    ntasks:        1
+    cpus_per_task: 1
+    partition:     "cpu_med"
+
+  # ── File paths (support {n_timepoints} placeholder) ──────────────
+  data_file:    "data/target/ImPower150_OS_Data_for_JointModels_R_{n_timepoints}.csv"
+  indices_file: "data/target/ImPower150_OS_Test_Indices_for_R_{n_timepoints}.csv"
+  output_file:  "results/JointModel_{n_timepoints}tp_metrics.csv"
+
