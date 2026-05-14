@@ -44,7 +44,6 @@ SHERLOC/
 │   ├── train_JointModel.R          # Training and evaluation scripts for the Joint Model
 │   └── train_ML.py                 # Training and evaluation scripts for the penalized Cox models and Random Survival Forests
 ├── setup.py                     # Project installation script
-├── requirements.txt             # Dependencies
 └── README.md
 ```
 

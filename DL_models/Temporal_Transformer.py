@@ -1,6 +1,6 @@
 import torch
 from torch.nn import Module
-from attention_methods import Attention_timesteps    
+from DL_models.attention_methods import Attention    
 
 class Temporal_Transformer(Module):
     def __init__(self, d_input: int, d_agg_input: int, d_channel: int, 
@@ -30,7 +30,7 @@ class Temporal_Transformer(Module):
         # Attention mechanism to learn a representation of the gene-level VAF features and 
         # panel-level features in the ctDNA data across longitudinal timepoints. 
         # In this model, temporal attention is learned, where each timestep is a token.   
-        self.attention_timesteps = Attention_timesteps(d_input=d_input+d_agg_input,
+        self.attention_timesteps = Attention(d_encoding=d_input+d_agg_input,
                 d_hidden=int((d_input+d_agg_input)/4), q=int((d_input+d_agg_input)/2), v=int((d_input+d_agg_input)/2), h=1, device=device)
         # Batch normalization for the clinical features                    
         self.bn_other_input = torch.nn.BatchNorm1d(d_other_input)
@@ -71,20 +71,3 @@ class Temporal_Transformer(Module):
             x_new = self.sigmoid(x_new) 
             return x_new          
     
-    def predict(self, x, x_agg, x_clinical, x_hidden_layer_SB):
-            # Idem the forward method, but without dropout for prediction
-            x_xagg = torch.cat((x, x_agg), dim=1)
-            x_xagg = torch.transpose(x_xagg, -1, -2)
-            x_xagg = self.bn_input(x_xagg)            
-            x_xagg, score = self.attention_timesteps(x_xagg)                        
-            x_xagg = x_xagg.reshape(x_xagg.shape[0], -1)           
-            x_xagg = self.sigmoid(x_xagg)                                        
-            x_hidden_layer_SB = x_hidden_layer_SB.reshape(x_hidden_layer_SB.shape[0], -1)
-            x_hidden_layer_SB = self.bn_SB(x_hidden_layer_SB)   
-            x_clinical = x_clinical.reshape(x_clinical.shape[0], -1)
-            x_clinical = self.bn_other_input(x_clinical)  
-            x_new = torch.cat((x_xagg, x_clinical, x_hidden_layer_SB), dim=-1)
-            x_new = self.fc_1(x_new)
-            x_new = self.sigmoid(x_new) 
-            return x_new          
-     

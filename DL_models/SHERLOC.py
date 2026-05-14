@@ -2,10 +2,7 @@ import torch
 from torch.nn import Module    
 
 class SHERLOC(Module):
-    def __init__(self, d_input: int, d_agg_input: int, d_channel: int, d_output: int, d_other_input: int,
-                 device: str):
-        super(SHERLOC, self).__init__() 
-        """
+    """
         Proposed model, SHERLOC (Shared and Exclusive Representations of Longitudinal ctDNA data), 
         which adopts a hybrid strategy learning shared longitudinal representations 
         of the gene-level VAF features and feature-specific temporal representations for 
@@ -21,7 +18,11 @@ class SHERLOC(Module):
             d_other_input (int): Number of other input features (clinical features).
             device (str): Device to run the model on ('cpu' or 'cuda').
 
-        """         
+    """ 
+    def __init__(self, d_input: int, d_agg_input: int, d_channel: int, d_output: int, d_other_input: int,
+                 device: str):
+        super(SHERLOC, self).__init__() 
+        
         self.d_input = d_input
         self.nb_agg = d_agg_input
         self.d_channel = d_channel
@@ -90,50 +91,3 @@ class SHERLOC(Module):
             x_new = self.sigmoid(x_new) 
             return x_new          
     
-    def predict(self, x, x_agg, x_clinical, x_hidden_layer_SB):
-            # Idem the forward method, but without dropout for prediction
-            x = self.bn_input(x)                            
-            x = self.filter1(x)
-            x = self.sigmoid(x)                        
-            x = x.reshape(x.shape[0], -1)
-            x_temp = []
-            for feature in range(self.nb_agg):
-                x_feature = x_agg[:, feature, :]  
-                mlp = self.mlps[feature]
-                output = mlp(x_feature)  
-                x_temp.append(output.unsqueeze(1))  
-            x_agg = torch.cat(x_temp, dim=1)  
-            x_agg = x_agg.reshape(x_agg.shape[0], -1)
-            x_agg = self.bn_agg_input(x_agg)                         
-            x_hidden_layer_SB = x_hidden_layer_SB.reshape(x_hidden_layer_SB.shape[0], -1)
-            x_hidden_layer_SB = self.bn_SB(x_hidden_layer_SB) 
-            x_clinical = x_clinical.reshape(x_clinical.shape[0], -1)
-            x_clinical = self.bn_other_input(x_clinical)
-            x_new = torch.cat((x, x_agg, x_clinical, x_hidden_layer_SB), dim=-1) 
-            x_new = self.fc_1(x_new)
-            x_new = self.sigmoid(x_new) 
-            return x_new
-                                            
-    def explainability(self, x, x_agg, x_clinical, x_hidden_layer_SB):
-            # Idem the predict method, but outputs the learned shared and feature-specific 
-            # representations of the ctDNA data, clinical features, and pre-trained solid 
-            # biopsy genomic-interaction representations, which can be used for explainability analyses.
-            x = self.bn_input(x)                            
-            x = self.filter1(x)
-            x = self.sigmoid(x)                        
-            x = x.reshape(x.shape[0], -1)         
-            x_temp = []
-            for feature in range(self.nb_agg):
-                x_feature = x_agg[:, feature, :]  
-                mlp = self.mlps[feature]
-                output = mlp(x_feature)  
-                x_temp.append(output.unsqueeze(1))      
-            x_agg = torch.cat(x_temp, dim=1)  
-            x_agg = x_agg.reshape(x_agg.shape[0], -1)
-            x_agg = self.bn_agg_input(x_agg)                           
-            x_hidden_layer_SB = x_hidden_layer_SB.reshape(x_hidden_layer_SB.shape[0], -1)
-            x_hidden_layer_SB = self.bn_SB(x_hidden_layer_SB)   
-            x_clinical = x_clinical.reshape(x_clinical.shape[0], -1)
-            x_clinical = self.bn_other_input(x_clinical)                                                                                      
-            return x, x_agg, x_clinical, x_hidden_layer_SB
-

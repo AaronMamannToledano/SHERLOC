@@ -1,12 +1,9 @@
 import torch
 from torch.nn import Module
-from attention_methods import Attention_channels
+from DL_models.attention_methods import Attention
 
 class Featurewise_Transformer(Module):
-    def __init__(self, d_input: int, d_agg_input: int, d_channel: int, d_output: int, d_other_input: int,
-                 device: str):
-        super(Featurewise_Transformer, self).__init__() 
-        """
+    """
         Feature-wise Transformer for learning a representation of the gene-level VAF features 
         and panel-level features in the ctDNA data, and combining it with pre-trained 
         solid biopsy genomic-interaction representations, and clinical features to obtain 
@@ -20,7 +17,10 @@ class Featurewise_Transformer(Module):
             d_other_input (int): Number of other input features (clinical features).
             device (str): Device to run the model on ('cpu' or 'cuda').
 
-        """         
+    """
+    def __init__(self, d_input: int, d_agg_input: int, d_channel: int, d_output: int, d_other_input: int,
+                 device: str):
+        super(Featurewise_Transformer, self).__init__()                  
 
         self.d_input = d_input
         self.d_channel = d_channel
@@ -31,7 +31,7 @@ class Featurewise_Transformer(Module):
         # Attention mechanism to learn a representation of the gene-level VAF features and 
         # panel-level features in the ctDNA data across longitudinal timepoints. 
         # In this model, feature-wise attention is learned, where each ctDNA feature is a token.   
-        self.attention_channels = Attention_channels(d_channel=d_channel,
+        self.attention_channels = Attention(d_encoding=d_channel,
                 d_hidden=int(d_channel/2), q=d_channel, v=d_channel, h=1, device=device)
         # Batch normalization for the clinical features
         self.bn_other_input = torch.nn.BatchNorm1d(d_other_input)
@@ -71,20 +71,3 @@ class Featurewise_Transformer(Module):
             x_new = self.sigmoid(x_new) 
             return x_new          
     
-    def predict(self, x, x_agg, x_clinical, x_hidden_layer_SB):
-            # Idem the forward method, but without dropout for prediction
-            x_xagg = torch.cat((x, x_agg), dim=1)
-            x_xagg = self.bn_input(x_xagg)            
-            x_xagg, score = self.attention_channels(x_xagg)                        
-            x_xagg = x_xagg.reshape(x_xagg.shape[0], -1)           
-            x_xagg = self.sigmoid(x_xagg)                                     
-            x_hidden_layer_SB = x_hidden_layer_SB.reshape(x_hidden_layer_SB.shape[0], -1)
-            x_hidden_layer_SB = self.bn_SB(x_hidden_layer_SB)  
-            x_clinical = x_clinical.reshape(x_clinical.shape[0], -1)
-            x_clinical = self.bn_other_input(x_clinical)  
-            x_new = torch.cat((x_xagg, x_clinical, x_hidden_layer_SB), dim=-1)
-            x_new = self.fc_1(x_new)
-            x_new = self.sigmoid(x_new) 
-            return x_new          
-      
-
