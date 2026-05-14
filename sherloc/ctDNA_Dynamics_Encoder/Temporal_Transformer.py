@@ -3,10 +3,7 @@ from torch.nn import Module
 from sherloc.utils import Attention    
 
 class Temporal_Transformer(Module):
-    def __init__(self, d_input: int, d_agg_input: int, d_channel: int, 
-                 d_output: int, d_other_input: int, device: str):
-        super(Temporal_Transformer, self).__init__() 
-        """
+    """
         Temporal Transformer for learning a representation of the gene-level VAF features 
         and panel-level features in the ctDNA data, and combining it with pre-trained 
         solid biopsy genomic-interaction representations, and clinical features to obtain 
@@ -20,7 +17,11 @@ class Temporal_Transformer(Module):
             d_other_input (int): Number of other input features (clinical features).
             device (str): Device to run the model on ('cpu' or 'cuda').
 
-        """         
+    """ 
+    def __init__(self, d_input: int, d_agg_input: int, d_channel: int, 
+                 d_output: int, d_other_input: int, device: str):
+        super(Temporal_Transformer, self).__init__() 
+        
         self.d_input = d_input
         self.d_channel = d_channel
         self.sigmoid = torch.nn.Sigmoid()
