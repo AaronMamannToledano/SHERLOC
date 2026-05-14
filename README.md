@@ -25,33 +25,36 @@ In this study, we address the challenge of extracting robust and clinically acti
 ## 📁 Project Structure
 ```text
 SHERLOC/
-├── DL_models/                      # Core architecture and encoders
+├── sherloc/                            # Core architecture and encoders
 │   ├── __init__.py
+│   ├── ctDNA_Dynamics_Encoder/
+│   │   ├── __init__.py                  
+│   │   ├── SHERLOC.py                  # Proposed Method
+│   │   ├── Featurewise_Transformer.py  # Feature-wise Transformer 
+│   │   ├── GRU.py                      # Gated Recurrent Unit
+│   │   ├── MLP_DeepSurv.py             # Multi-Layer Perceptron
+│   │   ├── RNN.py                      # Recurrent Neural Network
+│   │   └── Temporal_Transformer.py.    # Temporal Transformer
 │   ├── Genomic_Interaction_Encoder/
-│   │    ├── __init__.py
-│   │    └── MLP_SolidBiopsy.py     # Pre-trained tissue encoder
-│   ├── attention_methods.py        # Attention-based architecture 
-│   ├── Featurewise_Transformer.py  # Feature-wise Transformer 
-│   ├── GRU.py                      # Gated Recurrent Unit
-│   ├── MLP_DeepSurv.py             # Multi-Layer Perceptron
-│   ├── RNN.py                      # Recurrent Neural Network
-│   ├── SHERLOC.py                  # Proposed Method
-│   └── Temporal_Transformer.py.    # Temporal Transformer
+│   │   ├── __init__.py
+│   │   └── MLP_SolidBiopsy.py          # Pre-trained tissue encoder
+│   └── utils.py                        # Attention-based architecture 
+
 ├── scripts/                        
 │   ├── __init__.py
 │   ├── data/
-│   │    ├── msk_chord/             # Pre-training cohort (MSK-CHORD)
+│   │    ├── msk_chord/                # Pre-training cohort (MSK-CHORD)
 │   │    │    └── README.md
-│   │    ├── target/                # Cohort with longitudinal ctDNA data (e.g., IMpower150)
+│   │    ├── target/                   # Cohort with longitudinal ctDNA data (e.g., IMpower150)
 │   │    └──  └── README.md       
-│   ├── config.yaml                 # Configuration file for all scripts
-│   ├── explainability.py           # Explainability script for SHERLOC
-│   ├── shared_utils.py             # Data loading, pretraining, and latent feature extraction utilities 
-│   ├── train_DL.py                 # Training and evaluation scripts for Deep-Learning models
-│   ├── train_ML.py                 # Training and evaluation scripts for penalized Cox models and RSF 
-│   └── train_jm.R                  # Training and evaluation scripts for joint models
+│   ├── config.yaml                    # Configuration file for all scripts
+│   ├── explainability.py              # Explainability script for SHERLOC
+│   ├── shared_utils.py                # Data loading, pretraining, and latent feature extraction utilities 
+│   ├── train_DL.py                    # Training and evaluation scripts for Deep-Learning models
+│   ├── train_ML.py                    # Training and evaluation scripts for penalized Cox models and RSF 
+│   └── train_jm.R                     # Training and evaluation scripts for joint models
 ├── LICENSE      
-├── setup.py                        # Project installation script
+├── setup.py                           # Project installation script
 └── README.md
 ```
 
