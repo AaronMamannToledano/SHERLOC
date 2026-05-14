@@ -1,6 +1,6 @@
 import torch
 from torch.nn import Module
-from DL_models.attention_methods import Attention    
+from sherloc.utils import Attention    
 
 class Temporal_Transformer(Module):
     def __init__(self, d_input: int, d_agg_input: int, d_channel: int, 

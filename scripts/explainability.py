@@ -45,7 +45,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 # ── DL model ─────────────────────────────────────────────────────────────────
-from DL_models.SHERLOC import SHERLOC
+from sherloc.ctDNA_Dynamics_Encoder.SHERLOC import SHERLOC
 
 # ── shared pipeline utilities ─────────────────────────────────────────────────
 from shared_utils import (

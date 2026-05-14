@@ -48,12 +48,12 @@ import sksurv.util
 from sksurv.metrics import integrated_brier_score
 
 # ── DL model architectures ────────────────────────────────────────────────────
-from DL_models.SHERLOC import SHERLOC
-from DL_models.Featurewise_Transformer import Featurewise_Transformer
-from DL_models.Temporal_Transformer import Temporal_Transformer
-from DL_models.RNN import RNN_timesteps
-from DL_models.GRU import GRU_timesteps
-from DL_models.MLP_DeepSurv import MLP_DeepSurv
+from sherloc.ctDNA_Dynamics_Encoder.SHERLOC import SHERLOC
+from sherloc.ctDNA_Dynamics_Encoder.Featurewise_Transformer import Featurewise_Transformer
+from sherloc.ctDNA_Dynamics_Encoder.Temporal_Transformer import Temporal_Transformer
+from sherloc.ctDNA_Dynamics_Encoder.RNN import RNN_timesteps
+from sherloc.ctDNA_Dynamics_Encoder.GRU import GRU_timesteps
+from sherloc.ctDNA_Dynamics_Encoder.MLP_DeepSurv import MLP_DeepSurv
 
 # ── shared pipeline utilities ─────────────────────────────────────────────────
 # Data loading, pretraining, and latent feature extraction are all centralised

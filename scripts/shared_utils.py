@@ -39,7 +39,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 import yaml
 
-from DL_models.Genomic_Interaction_Encoder.MLP_SolidBiopsy import MLP_SolidBiopsy
+from sherloc.Genomic_Interaction_Encoder.MLP_SolidBiopsy import MLP_SolidBiopsy
 
 __all__ = [
     "load_config",

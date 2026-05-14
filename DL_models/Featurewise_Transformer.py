@@ -1,6 +1,6 @@
 import torch
 from torch.nn import Module
-from DL_models.attention_methods import Attention
+from sherloc.utils import Attention
 
 class Featurewise_Transformer(Module):
     """
