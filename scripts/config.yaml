@@ -1,0 +1,188 @@
+# ─────────────────────────────────────────────────────────────────
+# SHERLOC — Configuration File
+# Edit this file to point to your own data and adjust settings.
+# ─────────────────────────────────────────────────────────────────
+
+# ── Paths ─────────────────────────────────────────────────────────
+paths:
+  # Pretraining dataset (MSK-CHORD or equivalent): mutation file with VAFs
+  pretraining_mutations:   "data/msk_chord/data_mutations.txt"
+  # Clinical sample file for pretraining dataset (tumor type, TMB, etc.)
+  pretraining_cln_sample:  "data/msk_chord/data_clinical_sample.txt"
+  # Clinical patient file for pretraining dataset (OS months/status, stage)
+  pretraining_cln_patient: "data/msk_chord/data_clinical_patient.txt"
+  # Genes shared between pretraining panel and target dataset panel
+  genes_shared:            "data/target/ImPower150_Genes_{n_timepoints}.csv"
+  # Genes mutated in ≥5% of target dataset patients (for ctDNA-dynamics encoder)
+  genes_kept_restricted:   "data/target/ImPower150_geneskept_restricted_{n_timepoints}.csv"
+  # Longitudinal gene-level VAF features for target dataset
+  gene_ctdna:              "data/target/ImPower150_OS_{n_timepoints}.csv"
+  # Longitudinal panel-level aggregated ctDNA features for target dataset
+  panel_ctdna:             "data/target/ImPower150_AggFeatures_{n_timepoints}.csv"
+  # Where to save per-seed results CSV
+  output_dir:              "results/"
+
+# ── Timepoints ────────────────────────────────────────────────────
+# List of timepoint labels present in your longitudinal dataset.
+# Column names in gene_ctdna / panel_ctdna must follow the pattern
+#   <gene>_<timepoint>  and  <timepoint>_<panel_feature>
+timepoints: ["BL", "C2D1", "C3D1", "C4D1"]
+
+# ── Model ─────────────────────────────────────────────────────────
+# One of: Proposed_Method | Featurewise_Transformer | Temporal_Transformer
+#         RNN | GRU | MLP
+method: "Proposed_Method"
+
+# ── Pretraining column mapping ────────────────────────────────────
+# Rename these to match your pretraining dataset's exact column names.
+pretraining_columns:
+  patient_id:       "Tumor_Sample_Barcode"   # will be trimmed to first 2 dash-parts
+  gene_symbol:      "Hugo_Symbol"
+  variant_class:    "Variant_Classification"
+  mutation_status:  "Mutation_Status"
+  ref_count:        "t_ref_count"
+  alt_count:        "t_alt_count"
+  cancer_type:      "CANCER_TYPE"
+  tmb:              "TMB_NONSYNONYMOUS"
+
+# Survival columns in the pretraining PATIENT file
+pretraining_survival:
+  time:   "OS_MONTHS"
+  event:  "OS_STATUS"           # expected values: "1:DECEASED" / "0:LIVING"
+  stage:  "STAGE_HIGHEST_RECORDED"  # expected values: "Stage 1-3" / "Stage 4" / "Unknown"
+  patient_id: "PATIENT_ID"
+
+# Cancer types to one-hot encode (must match values in cancer_type column above).
+# Add or remove entries freely — the code adapts automatically.
+cancer_types:
+  - "Breast Cancer"
+  - "Colorectal Cancer"
+  - "Non-Small Cell Lung Cancer"
+  - "Pancreatic Cancer"
+  - "Prostate Cancer"
+
+# ── Target dataset column mapping ────────────────────────────────
+# Survival columns in the target (IMpower150-style) dataset
+target_survival:
+  time:  "OS_rebaseline"
+  event: "OS_event"
+
+# Clinical feature columns in the target dataset
+target_clinical_features:
+  - "cln_pdl1_high"
+  - "cln_nb_mets"
+  - "cln_baseline_ECOG"
+  - "cln_age"
+  - "cln_sex_female"
+  - "cln_sld_baseline"
+  - "cln_Bev_CP"
+  - "cln_Atezo_CP"
+
+# Panel-level aggregated ctDNA feature suffixes (appended to each timepoint)
+panel_feature_suffixes:
+  - "_max_of_AF"
+  - "_mean_of_AF"
+  - "_cfDNA_conc"
+  - "_n_kl"
+
+# Patient ID column in the target ctDNA files
+target_patient_id: "full_anonymized_patient_id"
+
+# ── Hyperparameters ───────────────────────────────────────────────
+pretraining:
+  lr:           0.01
+  batch_size:   500
+  epochs:       512
+  patience:     100   # early stopping
+  val_frac:     0.4
+  dropout:      0.5
+
+training:
+  lr:           0.005
+  batch_size:   50
+  epochs:       256
+  patience:     20    # early stopping
+  val_frac:     0.2
+  test_frac:    0.3
+
+# ── Evaluation ───────────────────────────────────────────────────
+evaluation:
+  n_seeds:      100
+  time_min_ibs:     2.1    # lower bound for IBS (months)
+  time_min_auc:     2.5    # lower bound for AUC (months)
+  time_max:     40.0   # upper bound for IBS / AUC time grid (months)
+  # Minimum mutation prevalence to keep a gene in the pretraining data
+  min_gene_prevalence: 0.02
+
+# ── Machine Learning models (train_ml.py) ────────────────────────
+# Used only by train_ml.py; ignored by train_dl.py.
+ml:
+  # One of: RSF | penalized_cox
+  method: "penalized_cox"
+  # Only used when method is penalized_cox: elastic_net | lasso | ridge
+  sub_method: "ridge"
+
+  penalized_cox:
+    # l1_ratio is set automatically from sub_method:
+    #   ridge → 1e-5 | lasso → 1.0 | elastic_net → 0.5
+    # Override here only if you need a custom mixing ratio.
+    l1_ratio_override: null
+    n_alphas:          20
+    max_iter:          5000
+    alpha_min_ratio:   0.005
+    cv_folds:          4
+
+  rsf:
+    # Values to search over via GridSearchCV
+    max_depth:         [15, null]   # null = unlimited depth
+    min_samples_split: [3, 6]
+    cv_folds:          4
+    n_jobs:            4            # parallel workers (-1 = all cores)
+
+# ── Explainability (explainability.py) ───────────────────────────
+# Used only by explainability.py; ignored by the other scripts.
+explainability:
+  # Fixed random seed for the single deterministic train/val/test split
+  seed:            16
+  test_frac:       0.3
+  val_frac:        0.2
+
+  # Bootstrap retraining of the SHERLOC output layer
+  n_bootstrap:     100    # number of bootstrap iterations
+  bootstrap_frac:  0.8    # fraction of training set sampled per iteration
+
+  # Hyperparameters for retraining the output layer on each bootstrap sample
+  lr:          0.005
+  batch_size:  50
+  epochs:      256
+  patience:    20
+
+  # ── Display names for the results DataFrame ───────────────────────
+  # These map SHERLOC's learned weight dimensions to human-readable labels.
+  # panel_feature_display_names: must contain 2 entries per panel_feature_suffix
+  # (SHERLOC's feature-specific MLPs project each panel feature to 2 dimensions).
+  panel_feature_display_names:
+    - "Max VAF [1]"
+    - "Max VAF [2]"
+    - "Mean VAF [1]"
+    - "Mean VAF [2]"
+    - "cfDNA concentration [1]"
+    - "cfDNA concentration [2]"
+    - "Number driver mut. [1]"
+    - "Number driver mut. [2]"
+
+  # clinical_feature_display_names: one entry per target_clinical_features item,
+  # in the same order.
+  clinical_feature_display_names:
+    - "PDL1 High"
+    - "Nb metastases"
+    - "Baseline ECOG"
+    - "Age"
+    - "Sex Female"
+    - "Sum Lesion Diameters Baseline"
+    - "Treatment ABCP"
+    - "Treatment BCP"
+
+  # encoder_repr_dims: number of output dimensions from MLP_SolidBiopsy encoder.
+  # Changes here must match the encoder architecture.
+  encoder_repr_dims: 2

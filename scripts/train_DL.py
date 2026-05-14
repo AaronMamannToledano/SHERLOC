@@ -1,21 +1,53 @@
+"""
+train_dl.py — Deep learning survival models with a pre-trained genomic encoder.
+
+Pipeline
+--------
+1. Pretrain a genomic-interaction encoder (MLP_SolidBiopsy) on the pretraining
+   cohort (e.g. MSK-CHORD) using the Cox PH loss.           [shared_utils]
+2. Extract per-patient latent gene features from the frozen encoder at every
+   configured longitudinal timepoint.                        [shared_utils]
+3. Load and merge the longitudinal target-cohort files.      [shared_utils]
+4. Run Monte-Carlo Cross-Validation (default: 100 seeds) on the target cohort
+   (e.g. IMpower150) with the selected deep learning model:
+   - ``Proposed_Method``        : SHERLOC
+   - ``Featurewise_Transformer``: feature-wise self-attention transformer
+   - ``Temporal_Transformer``   : temporal self-attention transformer
+   - ``RNN``                    : recurrent neural network
+   - ``GRU``                    : gated recurrent unit
+   - ``MLP``                    : MLP DeepSurv baseline
+5. Report C-index (IPCW), cumulative AUC, and integrated Brier score per seed.
+
+Usage
+-----
+  python train_dl.py                             # reads config.yaml
+  python train_dl.py --config my_cfg.yaml        # custom config file
+  python train_dl.py --method GRU                # override a single field
+  python train_dl.py --timepoints BL C2D1 C3D1   # three-timepoint run
+
+See config.yaml for the full list of tuneable settings.
+"""
+
+import argparse
 import os
-# 1. Fix the macOS OpenMP conflict
-os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
-# 2. Standard Imports
+import sys
+from pathlib import Path
+
+os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
+
 import numpy as np
 import pandas as pd
-from tqdm.notebook import tqdm
 import torch
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset
 import torchtuples as tt
 from pycox.models import CoxPH
+from torch.utils.data import DataLoader, Dataset
+from tqdm import tqdm
 
 import sksurv.metrics
 import sksurv.util
 from sksurv.metrics import integrated_brier_score
-from sklearn.exceptions import ConvergenceWarning
-from DL_models.Genomic_Interaction_Encoder.MLP_SolidBiopsy import MLP_SolidBiopsy 
+
+# ── DL model architectures ────────────────────────────────────────────────────
 from DL_models.SHERLOC import SHERLOC
 from DL_models.Featurewise_Transformer import Featurewise_Transformer
 from DL_models.Temporal_Transformer import Temporal_Transformer
@@ -23,465 +55,364 @@ from DL_models.RNN import RNN_timesteps
 from DL_models.GRU import GRU_timesteps
 from DL_models.MLP_DeepSurv import MLP_DeepSurv
 
-from warnings import simplefilter
-simplefilter("ignore", category=ConvergenceWarning)
-simplefilter("ignore", category=UserWarning)
-simplefilter("ignore", category=RuntimeWarning)
-simplefilter("ignore", category=FutureWarning)
+# ── shared pipeline utilities ─────────────────────────────────────────────────
+# Data loading, pretraining, and latent feature extraction are all centralised
+# in shared_utils so that train_dl.py and train_ml.py stay in sync without
+# code duplication.
+from shared_utils import (
+    load_config,
+    resolve_path,
+    validate_config,
+    load_dataframe,
+    prepare_pretraining_data,
+    pretrain_encoder,
+    extract_latent_features,
+    prepare_target_data,
+)
 
-def deep_model(method, timepoints, df_pretraining, df_genes, df_list_genes, df_cln_vars, df_clinical_MSK,
-               df_gene_ctDNA, df_panel_ctDNA, path_save_results_file):
+VALID_METHODS = {
+    "Proposed_Method":         SHERLOC,
+    "Featurewise_Transformer": Featurewise_Transformer,
+    "Temporal_Transformer":    Temporal_Transformer,
+    "RNN":                     RNN_timesteps,
+    "GRU":                     GRU_timesteps,
+    "MLP":                     MLP_DeepSurv,
+}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DL-specific dataset
+# ─────────────────────────────────────────────────────────────────────────────
+
+class LongitudinalSurvivalDataset(Dataset):
     """
-    Assess a Deep Learning model for survival analysis from longitudinal ctDNA data. 
-    - Pre-train genomic-interaction encoder on MSK-CHORD dataset, then extract latent gene features 
-    and use these as input to deep learning model for survival prediction.
-    - Execute 100 repeats train-test on IMpower150 dataset for the given Deep Learning model 
-    with selected architecture (Monte-Carlo Cross-Validation) 
-    - Evaluate model performance on the 100 different test sets with C-index, AUC, and IBS.
+    PyTorch Dataset for the main DL survival model on the target cohort.
+
+    Combines four input modalities per patient:
+    - Gene-level VAF features across longitudinal timepoints.
+    - Panel-level aggregated ctDNA features across longitudinal timepoints.
+    - Clinical features.
+    - Pre-computed latent encoder features (from the frozen MLP_SolidBiopsy).
 
     Args:
-        method (str): choice of the deep learning model, one of 'Proposed_Method','Featurewise_Transformer',
-        'Temporal_Transformer','RNN','GRU','MLP', where 'Proposed_Method' is SHERLOC
-        timepoints (list): list of timepoints to include in model, e.g. ['BL','C2D1','C3D1','C4D1']
-        df_pretraining (pd.DataFrame): pretraining dataset with mutation VAFs, e.g. MSK-CHORD dataset
-        df_genes (pd.DataFrame): dataset with list of genes to include in the genomic-interaction encoder, e.g. set of genes commonly sequenced between MSK-CHORD and IMPower150 panels
-        df_list_genes (pd.DataFrame): dataset with list of genes to include in the ctDNA-dynamics encoder, e.g. set of genes mutated in at least 5% of patients in IMPower150 dataset
-        df_cln_vars (pd.DataFrame): dataset with tumor types in pretraining dataset, e.g. MSK-CHORD dataset
-        df_clinical_MSK (pd.DataFrame): dataset with clinical variables and survival information for pretraining dataset, e.g. MSK-CHORD dataset
-        df_gene_ctDNA (pd.DataFrame): dataset with longitudinal gene-level ctDNA features (Gene-level VAFs) for IMPower150 dataset
-        df_panel_ctDNA (pd.DataFrame): dataset with longitudinal panel-level ctDNA features (e.g. Mean VAF, Max VAF, cfDNA conc., Nb driver mut.) for IMPower150 dataset
-        path_save_results_file (str): path to save model performance metrics for each seed in a DataFrame
-    
-    Returns:
-        Save model performance metrics (C-index, AUC, IBS) for each seed in a DataFrame. 
+        df:                  Target-cohort DataFrame (``reset_index`` applied
+                             internally).
+        gene_list:           Genes included in the ctDNA-dynamics encoder
+                             (mutated in >= 5% of target-cohort patients).
+        panel_features:      Panel-level feature suffixes (e.g. ``_max_of_AF``);
+                             columns are looked up as ``<timepoint><suffix>``.
+        clinical_features:   Clinical column names present in ``df``.
+        timepoints:          Ordered list of timepoint labels.
+        survival_time_col:   Survival time column name.
+        survival_event_col:  Survival event column name (0 / 1 int).
+        tensor_gene_encoded: Pre-computed latent encoder tensor,
+                             shape ``(n_patients, encoder_dim, n_timepoints)``.
     """
 
-    # Define the names of the time-to-event target variables for the pretraining dataset, 
-    # which are overall survival time and event in the MSK-CHORD dataset.
-    survival_time_name = 'OS_MONTHS'
-    survival_event_name = 'OS_EVENT'
-    # Store the number of timepoints
-    d_channel = len(timepoints)
-    df = df_pretraining
-    # Select columns of interest and compute variant allele frequency, filter out unknown mutation status, and silent mutations
-    columns_selected = ['Tumor_Sample_Barcode','Hugo_Symbol','Variant_Classification','Variant_Type','t_ref_count','t_alt_count','Mutation_Status']
-    df = df.loc[:, columns_selected] 
-    df['allele_frequency'] = df['t_alt_count'] / (df['t_alt_count'] + df['t_ref_count'])
-    df = df[df['Mutation_Status'] != 'UNKNOWN']
-    df = df[df['Variant_Classification'] != 'Silent']
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        gene_list: list,
+        panel_features: list,
+        clinical_features: list,
+        timepoints: list,
+        survival_time_col: str,
+        survival_event_col: str,
+        tensor_gene_encoded: torch.Tensor,
+    ):
+        self.df                  = df.reset_index(drop=True)
+        self.gene_list           = gene_list
+        self.panel_features      = panel_features
+        self.clinical_features   = clinical_features
+        self.timepoints          = timepoints
+        self.time_col            = survival_time_col
+        self.event_col           = survival_event_col
+        self.tensor_gene_encoded = tensor_gene_encoded
 
-    # Select genes that are commonly sequenced between MSK-CHORD and IMPower150 panels 
-    list_genes = df_genes['gene'].tolist()
-    list_genes_MSK = df['Hugo_Symbol'].unique().tolist()
-    common_genes = list(set(list_genes_MSK) & set(list_genes))
-    df = df[df['Hugo_Symbol'].isin(common_genes)]
+    def __len__(self):
+        return len(self.df)
 
-    # Select the maximum allele frequency for each gene for each patient, 
-    # and pivot to wide format with genes as columns and patients as rows
-    df['PATIENT_ID'] = df['Tumor_Sample_Barcode'].str.split('-').str[:2].str.join('-')
-    df = df[['PATIENT_ID','Hugo_Symbol','allele_frequency']]
-    df = df.groupby(['PATIENT_ID', 'Hugo_Symbol'])['allele_frequency'].max().reset_index()
-    df_wide = df.pivot(index='PATIENT_ID', columns='Hugo_Symbol', values='allele_frequency')
-    df_wide = df_wide.fillna(0)
-    df_wide = df_wide.reset_index()
-    df_wide = df_wide.rename_axis(None, axis=1)
-    df = df_wide
-    
-    # Remove genes that are mutated in less than 2% of patients, as these are unlikely 
-    # to be informative for survival prediction and may add noise to the model
-    for col in df.columns:
-        if sum(df[col]==0)>0.98*len(df):
-            df = df.drop(columns=[col])
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
 
+        row = self.df.iloc[idx]
 
-    # Map clinical variable of highest stage recorded to binary variable of metastatic 
-    # (stage 4) vs non-metastatic (stage 1-3), and merge with genomic data
-    df_clinical_MSK['Highest_Stage'] = None
-    df_clinical_MSK.loc[df_clinical_MSK['STAGE_HIGHEST_RECORDED']=='Stage 1-3','Highest_Stage']=0
-    df_clinical_MSK.loc[df_clinical_MSK['STAGE_HIGHEST_RECORDED']=='Stage 4','Highest_Stage']=1
-    df_clinical_MSK = df_clinical_MSK[df_clinical_MSK['STAGE_HIGHEST_RECORDED']!='Unknown']
-    df_clinical_MSK = df_clinical_MSK[['PATIENT_ID', 'Highest_Stage', 'OS_MONTHS', 'OS_STATUS']]
-    df = df.merge(df_clinical_MSK, left_on='PATIENT_ID', right_on='PATIENT_ID', how='inner')
+        # Gene-level VAFs: (n_genes, n_timepoints)
+        gene_vaf = np.stack([
+            row[[f"{g}_{t}" for t in self.timepoints]].to_numpy(dtype=np.float32)
+            for g in self.gene_list
+        ])
 
-    # One-hot encode tumor types and merge with genomic and stage data, and filter to patients with available survival information
-    df_dummies = pd.get_dummies(df_cln_vars, columns=['CANCER_TYPE'], prefix='')
-    df_dummies.rename(columns={'_Breast Cancer': 'Breast', '_Colorectal Cancer': 'Colorectal', '_Non-Small Cell Lung Cancer': 'NSCLC', '_Pancreatic Cancer': 'Pancreatic', '_Prostate Cancer':'Prostate'}, inplace=True)
-    df_dummies = df_dummies.groupby('PATIENT_ID').agg(
-        Breast=('Breast', 'sum'),
-        Colorectal=('Colorectal', 'sum'),
-        NSCLC=('NSCLC', 'sum'),
-        Pancreatic=('Pancreatic', 'sum'),
-        Prostate=('Prostate', 'sum'), 
-        TMB=('TMB_NONSYNONYMOUS', 'max'))
-    df = df.merge(df_dummies, left_on='PATIENT_ID', right_on='PATIENT_ID', how='inner')
-    df = df[df['OS_MONTHS'].notna()]
+        # Panel-level aggregated features: (n_panel_features, n_timepoints)
+        panel = np.stack([
+            row[[f"{t}{f}" for t in self.timepoints]].to_numpy(dtype=np.float32)
+            for f in self.panel_features
+        ])
 
-    # Map overall survival status to binary variable of deceased vs living, and 
-    # drop original OS_STATUS variable and patient ID variable
-    df['OS_EVENT'] = df['OS_STATUS'].map({
-        '1:DECEASED': 1,
-        '0:LIVING': 0
-    })
-    df['OS_EVENT'] = df['OS_EVENT'].astype('int')
-    df = df.drop(columns=['OS_STATUS', 'PATIENT_ID'])
+        cln = row[self.clinical_features].to_numpy(dtype=np.float32).reshape(1, -1)
+
+        targets = (float(row[self.time_col]), int(row[self.event_col]))
+
+        return (
+            torch.tensor(gene_vaf),
+            targets,
+            torch.tensor(cln),
+            torch.tensor(panel),
+            self.tensor_gene_encoded[idx].float(),
+        )
 
 
-    # Select gene features and clinical features for model input, 
-    # and rename survival columns for consistency with later code
-    df_full_train = df   
-    gene_and_cln_names = [i for i in df_full_train.columns if 'OS_' not in i]
-    gene_names = [i for i in gene_and_cln_names if 'Highest_Stage' not in i and 'Breast' not in i and 'Colorectal' not in i and 'NSCLC' not in i and 'Pancreatic' not in i and 'Prostate' not in i and 'TMB' not in i] 
-    cln_names = ['Highest_Stage','Breast','Colorectal','NSCLC','Pancreatic','Prostate','TMB']
-    genes_and_survival_names = gene_names + ['OS_MONTHS','OS_EVENT']
-    df_full_train_genes = df_full_train[genes_and_survival_names].copy()
-    df_full_train_genes = df_full_train_genes.rename(columns={'OS_MONTHS': 'OS_rebaseline', 'OS_EVENT': 'OS_event'})
+# ─────────────────────────────────────────────────────────────────────────────
+# Main pipeline
+# ─────────────────────────────────────────────────────────────────────────────
 
+def deep_model(cfg: dict) -> None:
+    """
+    Full DL survival pipeline: pretraining -> feature extraction ->
+    Monte-Carlo CV -> result export.
 
-    class molecular_survival_BigDataset(Dataset):
-        
-        """
-        PyTorch Dataset class to load gene features, clinical features, and survival information for each patient,
-        and return as tensors for model input. This will be used for pretraining the genomic-interaction encoder on the MSK-CHORD dataset,
-        and for extracting latent gene features for the main survival prediction model on the IMpower150 dataset.
-        """
-        
-        
-        def __init__(self, dataset_mol, survival_time_name='OS_MONTHS', survival_event_name='OS_EVENT'):
-            self.dataset_mol = dataset_mol
-            self.survival_time_name = survival_time_name
-            self.survival_event_name = survival_event_name
-            
-        def __len__(self):
-            return len(self.dataset_mol)
-        
-        def __getitem__(self, idx):
-            if torch.is_tensor(idx):
-                idx = idx.tolist()
-                
-            gene_features = self.dataset_mol.iloc[idx,][gene_names].to_numpy().astype(np.float32).reshape((1,-1))
-            gene_features = torch.from_numpy(gene_features)
-            cln_features = self.dataset_mol.iloc[idx,][cln_names].to_numpy().astype(np.float32).reshape((1,-1))
-            cln_features = torch.from_numpy(cln_features)
-            targets = (self.dataset_mol[self.survival_time_name].iloc[idx].astype(np.float32), self.dataset_mol[self.survival_event_name].iloc[idx])
-                
-            return gene_features, targets, cln_features
-        
+    All data loading, pretraining, and latent feature extraction are
+    delegated to ``shared_utils``; this function owns only the DL
+    training loop and evaluation.
 
+    Args:
+        cfg: Loaded and validated configuration dict.
+    """
+    # ── unpack config ─────────────────────────────────────────────────────────
+    method     = cfg["method"]
+    timepoints = cfg["timepoints"]
+    d_channel  = len(timepoints)
+    n_tp       = d_channel
+    tr_hp      = cfg["training"]
+    eval_cfg   = cfg["evaluation"]
+    tsurv      = cfg["target_survival"]
+    t_cln      = cfg["target_clinical_features"]
+    pf_suf     = cfg["panel_feature_suffixes"]
+    surv_time  = tsurv["time"]
+    surv_evt   = tsurv["event"]
+    t_min_ibs  = eval_cfg["time_min_ibs"]
+    t_min_auc  = eval_cfg["time_min_auc"]
+    t_max      = eval_cfg["time_max"]
 
-    # Set random seeds for reproducibility, and define function to extract survival time 
-    #  and event information from dataset 
-    np.random.seed(1)
-    _ = torch.manual_seed(1)
-    get_target = lambda df: (df[survival_time_name].values, df[survival_event_name].values)
+    out_dir = Path(cfg["paths"]["output_dir"])
+    out_dir.mkdir(parents=True, exist_ok=True)
+    result_path = out_dir / f"{method}_{n_tp}tp_metrics.csv"
 
-    # Split dataset into training and test sets, and further split training set into 
-    # training and validation sets for pretraining the genomic-interaction encoder on the MSK-CHORD dataset.
-    df_vaf = df.copy()                
-    df_vaf_full_train = df_vaf
-    df_vaf_val = df_vaf.sample(frac=0.4)
-    df_vaf_train = df_vaf.drop(df_vaf_val.index)    
-            
-    # Create PyTorch Datasets and DataLoaders for training and validation sets for pretraining the genomic-interaction encoder on the MSK-CHORD dataset.        
-    train_dataset = molecular_survival_BigDataset(df_vaf_train)
-    trainloader = DataLoader(train_dataset, batch_size=df_vaf_train.shape[0], shuffle=False)
-    val_dataset =  molecular_survival_BigDataset(df_vaf_val)
-    valloader = DataLoader(val_dataset, batch_size=df_vaf_val.shape[0], shuffle=False)
-    
-    # Define the architecture and hyperparameters for the genomic-interaction encoder 
-    d_input_SB = len(gene_names)
-    d_cln_SB = len(cln_names)
-    d_channel_SB = 1
-    d_output_SB = 1  
-    dropout_SB = 0.5        
-    DEVICE_SB = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
-    net_SB = MLP_SolidBiopsy(d_input=d_input_SB, d_channel=d_channel_SB, d_output=d_output_SB, d_other_input=d_cln_SB,
-                    device=DEVICE_SB, dropout=dropout_SB)    
-    model = CoxPH(net_SB, tt.optim.Adam)
-    model.optimizer.set_lr(0.01)
-    callbacks = [tt.callbacks.EarlyStopping(patience=100)]
-    batch_size = 500
-    verbose = False
-    epochs = 512
-            
-    # Extract gene features, clinical features, and survival information from training and validation dataloaders 
-    for i, data in enumerate(trainloader, 0):
-        gene_features, targets, cln_features = data            
-    for l, vdata in enumerate(valloader, 0):
-        val_gene_features, val_targets, val_cln_features = vdata
-        val = tt.tuplefy([val_gene_features.float(), val_cln_features.float()], val_targets)
+    print(f"[INFO] Method:     {method}")
+    print(f"[INFO] Timepoints: {timepoints}")
+    print(f"[INFO] Results ->  {result_path}")
 
-    # Pretrain the encoder on the MSK-CHORD dataset to learn latent gene features 
-    # that capture prognostic interactions between mutated genes.
+    # ── 1. Pretraining data preparation (shared_utils) ────────────────────────
+    print("[INFO] Loading pretraining data ...")
+    df_pretrain, gene_names, cln_names = prepare_pretraining_data(cfg)
+    print(
+        f"[INFO] Pretraining: {len(df_pretrain)} patients | "
+        f"{len(gene_names)} genes | {len(cln_names)} clinical features"
+    )
 
-    log = model.fit([gene_features.float(), cln_features.float()], targets, batch_size, epochs, callbacks, verbose,val_data=val.repeat(10).cat())        
+    # ── 2. Pretrain genomic-interaction encoder (shared_utils) ────────────────
+    print("[INFO] Pretraining genomic-interaction encoder ...")
+    net_SB = pretrain_encoder(df_pretrain, gene_names, cln_names, cfg)
+    print("[INFO] Pretraining complete.")
 
-    # Define function to extract latent gene features from the pretrained encoder 
-    # in order to use them in the full Deep Learning for survival analysis in the IMpower150 cohort
-    def latent_gene_features(dataset):
-        
-            latent_gene_encoding_all = []
-            for timepoint in timepoints:   
-                latent_gene_encoding = torch.from_numpy(dataset[[col + '_' + timepoint for col in gene_names]].to_numpy().astype(np.float32))
-                latent_gene_encoding = net_SB.extract_encoder(latent_gene_encoding).detach().cpu()
-                latent_gene_encoding_all.append(latent_gene_encoding)
-        
-            return torch.stack(latent_gene_encoding_all, dim=-1)
-    
-    # Extract the list of genes to include in the ctDNA-dynamics encoder, 
-    # which are those mutated in at least 5% of patients in the IMPower150 dataset, 
-    gene_list_restricted = df_list_genes['gene_kept_restricted'].unique().tolist()
+    # ── 3. Load target cohort (shared_utils) ──────────────────────────────────
+    df_list_genes = load_dataframe(
+        resolve_path(cfg["paths"]["genes_kept_restricted"], n_tp), index_col=0
+    )
+    if "gene_kept_restricted" not in df_list_genes.columns:
+        raise ValueError(
+            "genes_kept_restricted file must contain a 'gene_kept_restricted' "
+            "column. Check paths.genes_kept_restricted in config.yaml."
+        )
+    gene_list_restricted = df_list_genes["gene_kept_restricted"].unique().tolist()
 
-    class molecular_survival(Dataset):
-        
-            """
-            PyTorch Dataset class to load gene features, clinical features, 
-            aggregated ctDNA features, and survival information for each patient,
-            and return as tensors for model input. This will be used for training 
-            the main survival deep learning model on the IMpower150 dataset, 
-            with the pretrained latent gene features as input to the genomic-interaction encoder.
-            """
-            
-            def __init__(self, dataset_vaf, survival_event_name, survival_time_name, tensor_gene_encoded):
-                self.dataset_vaf = dataset_vaf
-                self.survival_event_name=survival_event_name
-                self.survival_time_name=survival_time_name
-                self.tensor_gene_encoded = tensor_gene_encoded 
-                
-            def __len__(self):
-                return len(self.dataset_vaf)
-            
-            def __getitem__(self, idx):
-                if torch.is_tensor(idx):
-                    idx = idx.tolist()
-                                
-                cols_mol_agg = ['max_of_AF','mean_of_AF','cfDNA_conc','n_kl']
-                cols_mol_genes = gene_list_restricted 
+    print("[INFO] Loading target cohort data ...")
+    df_target, _ = prepare_target_data(cfg)
+    print(f"[INFO] Target cohort: {len(df_target)} patients")
 
-                gene_ctDNA_VAFs = np.ones((len(cols_mol_genes),d_channel))
-                panel_ctDNA_features = np.ones((len(cols_mol_agg),d_channel))
+    # Validate that clinical columns expected by the Dataset exist
+    missing_cln = [c for c in t_cln if c not in df_target.columns]
+    if missing_cln:
+        raise ValueError(
+            f"Target dataset is missing clinical columns: {missing_cln}\n"
+            "Update target_clinical_features in config.yaml."
+        )
 
-                i=0                    
-                for feature in cols_mol_genes:
-                    feature_timesteps = ["_".join((feature,timepoint)) for timepoint in timepoints]
-                    gene_ctDNA_VAFs[i]=self.dataset_vaf.iloc[idx,][feature_timesteps].to_numpy().astype(np.float32).reshape((1,-1))
-                    i=i+1
-                
-                i=0    
-                for feature in cols_mol_agg:
-                    feature_timesteps = ["_".join((timepoint,feature)) for timepoint in timepoints]
-                    panel_ctDNA_features[i]=self.dataset_vaf.iloc[idx,][feature_timesteps].to_numpy().astype(np.float32).reshape((1,-1))
-                    i=i+1
-                    
-                gene_ctDNA_VAFs = torch.from_numpy(gene_ctDNA_VAFs)
-                panel_ctDNA_features = torch.from_numpy(panel_ctDNA_features) 
-                
-                patient_survival = (self.dataset_vaf[self.survival_time_name].iloc[idx].astype(np.float32), self.dataset_vaf[self.survival_event_name].iloc[idx])
-                
-                patient_clinical = ['cln_pdl1_high','cln_nb_mets','cln_baseline_ECOG','cln_age','cln_sex_female','cln_sld_baseline','cln_Bev_CP','cln_Atezo_CP']
+    # ── 4. Monte-Carlo Cross-Validation ──────────────────────────────────────
+    get_target = lambda df: (df[surv_time].values, df[surv_evt].values)
+    C_INDEX, AUC, IBS = [], [], []
+    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-                patient_cln = self.dataset_vaf.iloc[idx,][patient_clinical].to_numpy().astype(np.float32).reshape((1,-1))
-                patient_cln = torch.from_numpy(patient_cln)
-                
-                return gene_ctDNA_VAFs, patient_survival, patient_cln, panel_ctDNA_features, self.tensor_gene_encoded[idx].float() 
+    print(f"[INFO] Running {eval_cfg['n_seeds']} Monte-Carlo CV iterations ...")
+    for seed in tqdm(range(eval_cfg["n_seeds"])):
+        np.random.seed(seed)
+        torch.manual_seed(seed)
 
+        # ── train / val / test split ──────────────────────────────────
+        df_test      = df_target.sample(frac=tr_hp["test_frac"], random_state=seed)
+        df_train_val = df_target.drop(df_test.index)
+        df_val       = df_train_val.sample(frac=tr_hp["val_frac"], random_state=seed)
+        df_train     = df_train_val.drop(df_val.index)
 
+        # ── latent encoder features (shared_utils) ────────────────────
+        lat_train = extract_latent_features(df_train, net_SB, gene_names, timepoints)
+        lat_val   = extract_latent_features(df_val,   net_SB, gene_names, timepoints)
+        lat_test  = extract_latent_features(df_test,  net_SB, gene_names, timepoints)
 
-    # Define the names of time-to-event target for IMpower150 dataset
-    survival_time_name='OS_rebaseline' 
-    survival_event_name='OS_event' 
-    
-    # Select the relevant features for the main survival prediction model on the IMpower150 dataset, 
-    # including the longitudinal gene-level VAF features, the longitudinal panel-level aggregated ctDNA features, 
-    # and the clinical features.
-    features_list = ['_max_of_AF','_mean_of_AF','_cfDNA_conc','_n_kl']
-    agg_features_list = []
-    for timepoint in timepoints:
-        agg_features_list += ["".join((timepoint,features_list[i])) for i in range(len(features_list))]
-    df_panel_ctDNA = df_panel_ctDNA[['full_anonymized_patient_id']+agg_features_list]
-    df_gene_ctDNA = df_gene_ctDNA.drop(columns=[i for i in df_gene_ctDNA.columns if 'Agg' in i])
-    df_gene_ctDNA = df_gene_ctDNA.reset_index(drop=False).rename(columns={'index': 'full_anonymized_patient_id'})
-    df_1 = pd.merge(df_gene_ctDNA,df_panel_ctDNA,left_on='full_anonymized_patient_id',right_on='full_anonymized_patient_id',how='inner')
-    df_1 = df_1.drop(columns=['full_anonymized_patient_id'])    
-    cols_mol = [i for i in df_1.columns if 'Agg' not in i and 'cln' not in i and 'OS_event' not in i and 'OS_rebaseline' not in i and 'PFS' not in i]
-    cols_mol_genes = [i for i in cols_mol if '_BL' in i or '_C2D1' in i or '_C3D1' in i or '_C4D1' in i]
-    list_feat = agg_features_list.copy()
-    list_feat += [i for i in df_1.columns if 'cln_' in i or survival_time_name in i or survival_event_name in i]    
-    list_feat += cols_mol_genes.copy()  
-    df_1 = df_1[list_feat]
-    
-    # Initialize lists to store model performance metrics 
-    # across different seeds for Monte-Carlo Cross-Validation
-    C_INDEX = []
-    AUC = []
-    IBS = []
-    # Transform the target variable for survival analysis as a tuple of (time, event) 
-    # for use in the PyTorch Datasets and model training
-    get_target = lambda df: (df[survival_time_name].values, df[survival_event_name].values)
+        # ── PyTorch Datasets and DataLoaders ──────────────────────────
+        def make_dataset(df_split, lat):
+            return LongitudinalSurvivalDataset(
+                df_split, gene_list_restricted, pf_suf, t_cln,
+                timepoints, surv_time, surv_evt, lat,
+            )
 
+        train_ds = make_dataset(df_train, lat_train)
+        val_ds   = make_dataset(df_val,   lat_val)
+        test_ds  = make_dataset(df_test,  lat_test)
 
-    # Run Monte-Carlo Cross-Validation with 100 different random seeds 
-    # to split the IMPower150 dataset into training and test sets, 
-    # train the deep learning model on the training set, and evaluate performance on the test set for each seed.
-    for seed in tqdm(range(0, 100)):
-        
-        # Set random seeds for reproducibility for each iteration of Monte-Carlo Cross-Validation
-        np.random.seed(1*seed)
-        _ = torch.manual_seed(1*seed)
-        
-        # Split dataset into training and test sets, and further split training set into 
-        # training and validation sets for training the main survival prediction model on the IMpower150 dataset.
-        df_vaf=df_1.copy()
-        df_vaf_test = df_vaf.sample(frac=0.3)
-        df_vaf = df_vaf.drop(df_vaf_test.index)
-        df_vaf_full_train = df_vaf
-        df_vaf_val = df_vaf.sample(frac=0.2)
-        df_vaf_train = df_vaf.drop(df_vaf_val.index)
-        
-        # Extract latent gene features from the pretrained genomic-interaction encoder 
-        # for each patient in the training, validation, and test sets of the IMPower150 dataset, 
-        # to use as input to the main survival prediction model.
-        lat_gene_features_train = latent_gene_features(dataset=df_vaf_train)
-        lat_gene_features_val = latent_gene_features(dataset=df_vaf_val)
-        lat_gene_features_test = latent_gene_features(dataset=df_vaf_test)
+        trainloader = DataLoader(train_ds, batch_size=len(df_train), shuffle=False)
+        valloader   = DataLoader(val_ds,   batch_size=len(df_val),   shuffle=False)
+        testloader  = DataLoader(test_ds,  batch_size=len(df_test),  shuffle=False)
 
-        # Create PyTorch Datasets and DataLoaders for training and validation sets 
-        # for training the main survival prediction model on the IMPower150 dataset,
-        # with the pretrained latent gene features as input to the genomic-interaction encoder.           
-        train_dataset = molecular_survival(dataset_vaf=df_vaf_train, 
-                                            survival_event_name=survival_event_name, 
-                                            survival_time_name=survival_time_name,
-                                            tensor_gene_encoded = lat_gene_features_train)
-            
-        trainloader = DataLoader(train_dataset, batch_size=len(df_vaf_train), shuffle=False)        
-        val_dataset =  molecular_survival(dataset_vaf=df_vaf_val, 
-                                            survival_event_name=survival_event_name, 
-                                            survival_time_name=survival_time_name,
-                                            tensor_gene_encoded = lat_gene_features_val)
-            
-        valloader = DataLoader(val_dataset, batch_size=len(df_vaf_val), shuffle=False)
-          
-        # Transform the target variables into the format required for survival analysis
-        durations_train_full, events_train_full = get_target(df_vaf_full_train)
-        y_full_train_formatted = sksurv.util.Surv.from_arrays(event=events_train_full, time=durations_train_full)
-                
-        # Define hyperparameters for the main survival prediction model on the IMpower150 dataset
-        d_input = train_dataset[0][0].shape[0]
-        d_other_input = train_dataset[0][2].shape[1]
-        d_agg_input = train_dataset[0][3].shape[0]
-        d_output = 1  
-        DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
+        # Single batch for now. The .fit() method will split this into smaller batches later. 
+        for inputs, targets_b, other_inputs, agg_inputs, gene_enc in trainloader:
+            pass
+        for vi, vt, vo, va, vge in valloader:
+            val_data = tt.tuplefy(
+                [vi.float(), va.float(), vo.float(), vge.float()], vt
+            )
 
-        # Initialize the main survival prediction model with the selected architecture
-        if method=='Proposed_Method':
-            net = SHERLOC(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
-                            d_output=d_output, device=DEVICE)
-        if method=='Featurewise_Transformer':
-            net = Featurewise_Transformer(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
-                            d_output=d_output, device=DEVICE)
-        if method=='Temporal_Transformer':
-            net = Temporal_Transformer(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
-                            d_output=d_output, device=DEVICE)
-        if method=='RNN':
-            net = RNN_timesteps(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
-                            d_output=d_output, device=DEVICE)
-        if method=='GRU':
-            net = GRU_timesteps(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
-                            d_output=d_output, device=DEVICE)
-        if method=='MLP':
-            net = MLP_DeepSurv(d_input=d_input, d_agg_input=d_agg_input, d_other_input=d_other_input, d_channel=d_channel, 
-                            d_output=d_output, device=DEVICE)
-        
-        # Select the loss function for training the model, which is the Cox Proportional Hazards loss for survival analysis, 
-        # and the optimizer, which is Adam. Train the model on the training set of the IMPower150          
-        model = CoxPH(net, tt.optim.Adam)                
-        batch_size = 50
-        model.optimizer.set_lr(0.005)
-        callbacks = [tt.callbacks.EarlyStopping(patience=20)]
-        verbose = False
-        epochs = 256
+        # ── model initialisation ──────────────────────────────────────
+        # Derive input dimensions directly from the first dataset sample
+        # so they stay consistent with the data regardless of config changes.
+        d_input = train_ds[0][0].shape[0]   # number of genes
+        d_agg   = train_ds[0][3].shape[0]   # number of panel-level features
+        d_other = train_ds[0][2].shape[1]   # number of clinical features
 
-        # Extract the features and target variables from the training and validation dataloaders 
-        # for training the main survival prediction model on the IMpower150 dataset.
-        for i, data in enumerate(trainloader, 0):
-                inputs, targets, other_inputs, agg_inputs, gene_encoded_inputs = data            
-        for l, vdata in enumerate(valloader, 0):
-                vinputs, vtargets, vother_inputs, vagg_inputs, vgene_encoded_inputs = vdata
-                val = tt.tuplefy([vinputs.float(), vagg_inputs.float(),vother_inputs.float(), vgene_encoded_inputs.float()], vtargets)
+        net = VALID_METHODS[method](
+            d_input=d_input,
+            d_agg_input=d_agg,
+            d_other_input=d_other,
+            d_channel=d_channel,
+            d_output=1,
+            device=DEVICE,
+        )
+        model = CoxPH(net, tt.optim.Adam)
+        model.optimizer.set_lr(tr_hp["lr"])
 
-        # Train the main survival prediction model on the IMPower150 dataset 
-        # with the pretrained latent gene features as input to the genomic-interaction encoder,
-        # and evaluate performance on the validation set for early stopping.         
-        log = model.fit([inputs.float(), agg_inputs.float(),other_inputs.float(), gene_encoded_inputs.float()], targets, batch_size, epochs, callbacks, verbose,val_data=val.repeat(10).cat())        
+        # ── training ──────────────────────────────────────────────────
+        model.fit(
+            [inputs.float(), agg_inputs.float(),
+             other_inputs.float(), gene_enc.float()],
+            targets_b,
+            tr_hp["batch_size"],
+            tr_hp["epochs"],
+            [tt.callbacks.EarlyStopping(patience=tr_hp["patience"])],
+            verbose=False,
+            val_data=val_data.repeat(10).cat(),
+        )
 
-        # Create PyTorch Datasets and DataLoaders for the test set of the IMPower150 dataset
-        test_dataset =  molecular_survival(dataset_vaf=df_vaf_test, 
-                                            survival_event_name=survival_event_name, 
-                                            survival_time_name=survival_time_name, 
-                                            tensor_gene_encoded = lat_gene_features_test)
-            
-        testloader = DataLoader(test_dataset, batch_size=len(df_vaf_test), shuffle=False)
+        # ── inference ─────────────────────────────────────────────────
+        for ti, _, to, ta, tge in testloader:
+            pass
 
-        # Transform the target variables into the format required for survival analysis for the 
-        # full training set and the test set of the IMPower150 dataset.
-        durations_train_full, events_train_full = get_target(df_vaf_full_train)
-        y_full_train_formatted = sksurv.util.Surv.from_arrays(event=events_train_full, time=durations_train_full)    
-        durations_test, events_test = get_target(df_vaf_test)
-        y_test_formatted = sksurv.util.Surv.from_arrays(event=events_test, time=durations_test)
-        
-        # Extract the features and target variables from the test dataloaders on the IMpower150 dataset.    
-        for j, data in enumerate(testloader, 0):
-            inputs_test, targets_test, other_inputs_test, agg_inputs_test, gene_encoded_inputs_test = data
-        
-        # Computing the baseline hazards is necessary to obtain the survival function predictions from the CoxPH model, 
-        # which are needed to compute the performance metrics.          
         _ = model.compute_baseline_hazards()
-        surv = model.predict_surv_df([inputs_test.float(), agg_inputs_test.float(),other_inputs_test.float(), gene_encoded_inputs_test.float()])
-        
-        # Evaluate model performance on the test set with C-index, AUC, and IBS, and store results for each seed in Monte-Carlo Cross-Validation.
-        concordance_uno = sksurv.metrics.concordance_index_ipcw(survival_train=y_full_train_formatted,survival_test=y_test_formatted,estimate=model.predict([inputs_test.float(), agg_inputs_test.float(),other_inputs_test.float(), gene_encoded_inputs_test.float()]).flatten())[0]
-        C_INDEX = np.append(C_INDEX,concordance_uno)
-        print('C-Uno',concordance_uno)
-        
-        times = np.arange(2.5,40)
-        if d_channel==2:
-            times = np.arange(2.55,40)
-        auc = sksurv.metrics.cumulative_dynamic_auc(survival_train=y_full_train_formatted,survival_test=y_test_formatted,estimate=model.predict([inputs_test.float(), agg_inputs_test.float(),other_inputs_test.float(), gene_encoded_inputs_test.float()]).flatten(), times=times)[1]
-        AUC = np.append(AUC, auc)
-        print('AUC',auc)
-        
-        surv_1 = surv[(surv.index>=2.1)&(surv.index<=40)]
-        if d_channel==2:
-            surv_1 = surv[(surv.index>=2.55)&(surv.index<=40)]
-        ibs_1 = integrated_brier_score(survival_train=y_full_train_formatted,survival_test=y_test_formatted,estimate=np.transpose(surv_1.to_numpy()), times=np.array(surv_1.index))
-        IBS = np.append(IBS,ibs_1)
-        print('IBS', ibs_1)
-                
-    df_results = pd.DataFrame({
-        "C-index": C_INDEX,
-        "AUC": AUC,
-        "IBS": IBS
-    })
 
-    print(df_results)
+        # Bundle test inputs once to avoid repeating the list literal
+        test_inputs = [ti.float(), ta.float(), to.float(), tge.float()]
 
-    df_results.to_csv(path_save_results_file, index=True)
+        # ── survival targets ──────────────────────────────────────────
+        dur_train, ev_train = get_target(df_train_val)
+        dur_test,  ev_test  = get_target(df_test)
+        y_train = sksurv.util.Surv.from_arrays(event=ev_train, time=dur_train)
+        y_test  = sksurv.util.Surv.from_arrays(event=ev_test,  time=dur_test)
+
+        risk_scores = model.predict(test_inputs).flatten()
+
+        # ── C-index (IPCW) ────────────────────────────────────────────
+        c_uno = sksurv.metrics.concordance_index_ipcw(
+            y_train, y_test, estimate=risk_scores
+        )[0]
+        C_INDEX.append(c_uno)
+
+        # ── cumulative dynamic AUC ────────────────────────────────────
+        times_auc = np.arange(t_min_auc, t_max)
+        auc = sksurv.metrics.cumulative_dynamic_auc(
+            y_train, y_test, estimate=risk_scores, times=times_auc
+        )[1]
+        AUC.append(auc)
+
+        # ── integrated Brier score ────────────────────────────────────
+        surv_df     = model.predict_surv_df(test_inputs)
+        surv_window = surv_df[
+            (surv_df.index >= t_min_ibs) & (surv_df.index <= t_max)
+        ]
+        ibs = integrated_brier_score(
+            y_train, y_test,
+            estimate=np.transpose(surv_window.to_numpy()),
+            times=np.array(surv_window.index),
+        )
+        IBS.append(ibs)
+
+    # ── summary and export ────────────────────────────────────────────────────
+    df_results = pd.DataFrame({"C-index": C_INDEX, "AUC": AUC, "IBS": IBS})
+
+    print("\n[INFO] Summary across seeds:")
+    print(df_results.describe().round(4))
+
+    df_results.to_csv(result_path, index=True)
+    print(f"\n[INFO] Results saved to {result_path}")
 
 
-# Execute the function with the selected deep learning model architecture 
-# and the relevant datasets for pretraining and survival prediction, and save results to a file.
+# ─────────────────────────────────────────────────────────────────────────────
+# CLI
+# ─────────────────────────────────────────────────────────────────────────────
 
-timepoints = ['BL','C2D1','C3D1','C4D1']
-d_channel = len(timepoints)
-df_pretraining = pd.read_csv('/Users/aaronmamann/Downloads/msk_chord_2024/data_mutations.txt', sep='\t')
-method='Proposed_Method' # Other models: 'Featurewise_Transformer','Temporal_Transformer','RNN','GRU','MLP','Proposed_Method' 
-df_genes = pd.read_csv(''.join(("/Users/aaronmamann/Documents/ImPower150_Genes_",str(d_channel),".csv")),index_col=0)
-df_cln_vars = pd.read_csv('/Users/aaronmamann/Downloads/msk_chord_2024/data_clinical_sample.txt', sep='\t', skiprows=4)
-df_clinical_MSK = pd.read_csv('/Users/aaronmamann/Downloads/msk_chord_2024/data_clinical_patient.txt', sep='\t', skiprows=4)
-df_list_genes = pd.read_csv(''.join(("/Users/aaronmamann/Documents/ImPower150_geneskept_restricted_",str(d_channel),".csv")),index_col=0)
-df_gene_ctDNA = pd.read_csv("".join(("/Users/aaronmamann/Documents/ImPower150_OS_",str(d_channel),".csv")),index_col=0)  
-df_panel_ctDNA = pd.read_csv("".join(("/Users/aaronmamann/Documents/ImPower150_AggFeatures_",str(d_channel),".csv")),index_col=0) 
-path_save_results_file = ''.join(('Cycles_exp/',method,str(d_channel),'_metrics.csv'))
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        description="SHERLOC and baseline DL survival models — longitudinal ctDNA",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    p.add_argument(
+        "--config", default="config.yaml",
+        help="Path to YAML configuration file (default: config.yaml)"
+    )
+    p.add_argument(
+        "--method", choices=list(VALID_METHODS),
+        help="Override method from config.yaml"
+    )
+    p.add_argument(
+        "--timepoints", nargs="+",
+        help="Override timepoints, e.g. --timepoints BL C2D1 C3D1"
+    )
+    p.add_argument(
+        "--output_dir",
+        help="Override paths.output_dir from config.yaml"
+    )
+    return p.parse_args()
 
-deep_model(method=method, timepoints=timepoints, df_pretraining=df_pretraining, df_genes=df_genes, df_list_genes=df_list_genes, 
-           df_cln_vars=df_cln_vars, df_clinical_MSK=df_clinical_MSK, df_gene_ctDNA=df_gene_ctDNA, df_panel_ctDNA=df_panel_ctDNA,
-           path_save_results_file=path_save_results_file)
+
+if __name__ == "__main__":
+    args = parse_args()
+
+    if not Path(args.config).exists():
+        sys.exit(
+            f"[ERROR] Config file not found: {args.config}\n"
+            "Copy config.yaml to your working directory and edit the paths section."
+        )
+
+    cfg = load_config(args.config)
+
+    # Apply CLI overrides
+    if args.method:
+        cfg["method"] = args.method
+    if args.timepoints:
+        cfg["timepoints"] = args.timepoints
+    if args.output_dir:
+        cfg["paths"]["output_dir"] = args.output_dir
+
+    # mode="dl" checks cfg["method"] against VALID_DL_METHODS in shared_utils
+    validate_config(cfg, mode="dl")
+    deep_model(cfg)
