@@ -49,10 +49,10 @@ SHERLOC/
 │   │    └──  └── README.md       
 │   ├── config.yaml                    # Configuration file for all scripts
 │   ├── explainability.py              # Explainability script for SHERLOC
-│   ├── shared_utils.py                # Data loading, pretraining, and latent feature extraction utilities 
 │   ├── train_DL.py                    # Training and evaluation scripts for Deep-Learning models
 │   ├── train_ML.py                    # Training and evaluation scripts for penalized Cox models and RSF 
-│   └── train_jm.R                     # Training and evaluation scripts for joint models
+│   ├── train_jm.R                     # Training and evaluation scripts for joint models
+│   └── utils.py                       # Data loading, pretraining, and latent feature extraction utilities 
 ├── LICENSE      
 ├── setup.py                           # Project installation script
 └── README.md
