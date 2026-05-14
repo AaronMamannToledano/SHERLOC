@@ -114,8 +114,8 @@ evaluation:
   # Minimum mutation prevalence to keep a gene in the pretraining data
   min_gene_prevalence: 0.02
 
-# ── Machine Learning models (train_ml.py) ────────────────────────
-# Used only by train_ml.py; ignored by train_dl.py.
+# ── Machine Learning models (train_ML.py) ────────────────────────
+# Used only by train_ML.py; ignored by train_DL.py.
 ml:
   # One of: RSF | penalized_cox
   method: "penalized_cox"

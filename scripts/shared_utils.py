@@ -1,6 +1,6 @@
 """
 shared_utils.py — Data loading, pretraining, and latent feature extraction
-utilities shared by train_dl.py and train_ml.py.
+utilities shared by train_DL.py and train_ML.py.
 
 Importing this module is the only thing either training script needs to do
 to get the full pretraining pipeline; no logic is duplicated between them.

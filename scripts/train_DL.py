@@ -1,5 +1,5 @@
 """
-train_dl.py — Deep learning survival models with a pre-trained genomic encoder.
+train_DL.py — Deep learning survival models with a pre-trained genomic encoder.
 
 Pipeline
 --------
@@ -20,10 +20,10 @@ Pipeline
 
 Usage
 -----
-  python train_dl.py                             # reads config.yaml
-  python train_dl.py --config my_cfg.yaml        # custom config file
-  python train_dl.py --method GRU                # override a single field
-  python train_dl.py --timepoints BL C2D1 C3D1   # three-timepoint run
+  python train_DL.py                             # reads config.yaml
+  python train_DL.py --config my_cfg.yaml        # custom config file
+  python train_DL.py --method GRU                # override a single field
+  python train_DL.py --timepoints BL C2D1 C3D1   # three-timepoint run
 
 See config.yaml for the full list of tuneable settings.
 """
@@ -57,7 +57,7 @@ from DL_models.MLP_DeepSurv import MLP_DeepSurv
 
 # ── shared pipeline utilities ─────────────────────────────────────────────────
 # Data loading, pretraining, and latent feature extraction are all centralised
-# in shared_utils so that train_dl.py and train_ml.py stay in sync without
+# in shared_utils so that train_DL.py and train_ML.py stay in sync without
 # code duplication.
 from shared_utils import (
     load_config,

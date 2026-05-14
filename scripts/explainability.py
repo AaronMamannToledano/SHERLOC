@@ -8,7 +8,7 @@ Pipeline
 2. Load the longitudinal target cohort and extract latent gene features
    from the frozen encoder.                                  [shared_utils]
 3. Train SHERLOC once on a fixed, reproducible train/val split (seed from
-   config) using the full training procedure from train_dl.py.
+   config) using the full training procedure from train_DL.py.
 4. Bootstrap output-layer retraining (default: 100 iterations):
    - Sample 80 % of the training set without replacement.
    - Clone SHERLOC and load the trained weights.
@@ -61,7 +61,7 @@ from shared_utils import (
 )
 
 # ── DL-specific dataset ──────────────────────────────────────────────────────
-from train_dl import LongitudinalSurvivalDataset
+from train_DL import LongitudinalSurvivalDataset
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers

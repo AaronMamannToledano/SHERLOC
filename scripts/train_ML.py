@@ -1,5 +1,5 @@
 """
-train_ml.py — Machine learning survival models with a pre-trained genomic encoder.
+train_ML.py — Machine learning survival models with a pre-trained genomic encoder.
 
 Pipeline
 --------
@@ -18,11 +18,11 @@ Pipeline
 
 Usage
 -----
-  python train_ml.py                               # reads config.yaml
-  python train_ml.py --config my_cfg.yaml
-  python train_ml.py --method RSF
-  python train_ml.py --method penalized_cox --sub_method lasso
-  python train_ml.py --timepoints BL C2D1
+  python train_ML.py                               # reads config.yaml
+  python train_ML.py --config my_cfg.yaml
+  python train_ML.py --method RSF
+  python train_ML.py --method penalized_cox --sub_method lasso
+  python train_ML.py --timepoints BL C2D1
 """
 
 import argparse
