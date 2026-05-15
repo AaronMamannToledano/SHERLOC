@@ -227,11 +227,12 @@ joint_model:
   # ── Evaluation time grid ─────────────────────────────────────────
   eval_time_start: 2.5    # lower bound for IBS / AUC time grid (months)
   eval_time_end:   40.0   # upper bound for IBS / AUC time grid (months)
-  eval_time_step:  5.0    # step between time points in the grid
-  auc_tstart:      2.1    # Tstart argument passed to tvAUC
+  eval_time_step:  1.0    # step between time points in the grid
+  auc_tstart:      2.5    # Tstart argument passed to tvAUC
+  ibs_tstart:      2.1    # Tstart argument passed to tvBrier
 
   # ── Reproducibility ──────────────────────────────────────────────
-  seed:         3
+  seed:          3
   n_experiments: 100    # number of train/test splits to evaluate
 
   # ── SLURM options (used by rslurm for parallel execution) ────────

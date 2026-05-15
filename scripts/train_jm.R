@@ -93,7 +93,8 @@ validate_config <- function(cfg) {
     "clinical_prefix", "encoder_prefix",
     "threshold_feature_frequency",
     "n_iter", "n_burnin",
-    "eval_time_start", "eval_time_end", "eval_time_step", "auc_tstart",
+    "eval_time_start", "eval_time_end", 
+    "eval_time_step", "auc_tstart", "ibs_tstart",
     "seed", "n_experiments",
     "data_file", "indices_file", "output_file"
   )
@@ -284,7 +285,7 @@ joint_model <- function(df, df_indices, experiment_number, cfg) {
   ibs_result <- tvBrier(
     joint_fit,
     newdata       = df_test_baseline,
-    Tstart        = jm$eval_time_start,
+    Tstart        = jm$ibs_tstart,
     Thoriz        = jm$eval_time_end,
     integrated    = TRUE,
     cores         = 1L,
