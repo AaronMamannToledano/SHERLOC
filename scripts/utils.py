@@ -542,7 +542,6 @@ def prepare_target_data(cfg: dict) -> tuple[pd.DataFrame, list[str]]:
     df_panel = load_dataframe(
         resolve_path(cfg["paths"]["panel_ctdna"], n_tp), index_col=0
     )
-    # df_panel = df_panel.reset_index(drop=False).rename(columns={"index": pid_col})
 
     missing_agg = [c for c in agg_feature_cols if c not in df_panel.columns]
     if missing_agg:

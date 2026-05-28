@@ -1,0 +1,69 @@
+cff-version: 1.2.0
+message: "If you use SHERLOC in your research, please cite the manuscript and this software."
+title: "SHERLOC: An interpretable deep learning model for longitudinal ctDNA data in survival analysis"
+abstract: >-
+  SHERLOC is a deep learning framework for survival analysis on short
+  longitudinal trajectories of high-dimensional ctDNA measurements,
+  combining a Temporal Transformer over gene-level VAFs, a Feature-wise
+  Transformer over panel-level biomarkers, and a pre-trained genomic
+  interaction encoder learned from large tissue-biopsy cohorts
+  (MSK-CHORD).
+type: software
+authors:
+  - family-names: "Mamann"
+    given-names: "A."
+    email: "aaron.mamann16@gmail.com"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"   # TODO: add your ORCID
+  - family-names: "Das"
+    given-names: "J."
+  - family-names: "Benkirane"
+    given-names: "H."
+  - family-names: "Bugiotti"
+    given-names: "F."
+  - family-names: "Bernard"
+    given-names: "E."
+  - family-names: "Besse"
+    given-names: "B."
+  - family-names: "Michiels"
+    given-names: "S."
+  - family-names: "Cournède"
+    given-names: "P.-H."
+license: MIT
+repository-code: "https://github.com/AaronMamannToledano/SHERLOC"
+url: "https://github.com/AaronMamannToledano/SHERLOC"
+keywords:
+  - survival analysis
+  - ctDNA
+  - longitudinal data
+  - deep learning
+  - oncology
+  - interpretable machine learning
+version: "0.1.0"
+date-released: "2026-05-19"
+
+# The associated manuscript is currently under peer review.
+# Fill in the journal / DOI fields when accepted and uncomment.
+preferred-citation:
+  type: article
+  title: "SHERLOC: An interpretable deep learning model for longitudinal ctDNA data in survival analysis"
+  authors:
+    - family-names: "Mamann"
+      given-names: "A."
+    - family-names: "Das"
+      given-names: "J."
+    - family-names: "Benkirane"
+      given-names: "H."
+    - family-names: "Bugiotti"
+      given-names: "F."
+    - family-names: "Bernard"
+      given-names: "E."
+    - family-names: "Besse"
+      given-names: "B."
+    - family-names: "Michiels"
+      given-names: "S."
+    - family-names: "Cournède"
+      given-names: "P.-H."
+  year: 2026
+  notes: "Manuscript submitted; under peer review."
+  # journal: "TBD"
+  # doi: "10.xxxx/xxxxxx"

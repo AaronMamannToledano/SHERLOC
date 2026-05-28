@@ -25,14 +25,14 @@ class Temporal_Transformer(Module):
         self.d_input = d_input
         self.d_channel = d_channel
         self.sigmoid = torch.nn.Sigmoid()
-        self.dropout = torch.nn.Dropout(p=0.3)
+        self.dropout = torch.nn.Dropout(p=0.4)
         # Batch normalization for the gene-level VAF features and panel-level features
         self.bn_input = torch.nn.BatchNorm1d(d_channel)
         # Attention mechanism to learn a representation of the gene-level VAF features and 
         # panel-level features in the ctDNA data across longitudinal timepoints. 
         # In this model, temporal attention is learned, where each timestep is a token.   
         self.attention_timesteps = Attention(d_encoding=d_input+d_agg_input,
-                d_hidden=int((d_input+d_agg_input)/4), q=int((d_input+d_agg_input)/2), v=int((d_input+d_agg_input)/2), h=1, device=device)
+                d_hidden=int((d_input+d_agg_input)/2), q=int((d_input+d_agg_input)/2), v=int((d_input+d_agg_input)/2), h=1, device=device)
         # Batch normalization for the clinical features                    
         self.bn_other_input = torch.nn.BatchNorm1d(d_other_input)
         # Batch normalization for genomic-interaction representations pre-trained on solid biopsy DNA data
@@ -40,7 +40,7 @@ class Temporal_Transformer(Module):
         # Fully connected layer to learn the log-risk of the Cox proportional hazards framework 
         # based on the learned ctDNA representation, clinical features, and pre-trained solid 
         # biopsy genomic-interaction representations
-        self.fc_1 = torch.nn.Linear((d_channel*2)+(int((d_input+d_agg_input)/4)*d_channel)+d_other_input, d_output)
+        self.fc_1 = torch.nn.Linear((d_channel*2)+(int((d_input+d_agg_input)/2)*d_channel)+d_other_input, d_output)
                                 
     def forward(self, x, x_agg, x_clinical, x_hidden_layer_SB):
             """
@@ -56,8 +56,7 @@ class Temporal_Transformer(Module):
             x_xagg = torch.transpose(x_xagg, -1, -2)
             x_xagg = self.bn_input(x_xagg)            
             x_xagg, score = self.attention_timesteps(x_xagg)                        
-            x_xagg = x_xagg.reshape(x_xagg.shape[0], -1)           
-            x_xagg = self.sigmoid(x_xagg) 
+            x_xagg = x_xagg.reshape(x_xagg.shape[0], -1)            
             # Batch normalization is applied to the pre-trained solid biopsy genomic-interaction 
             # representations and clinical features, and then they are concatenated 
             # with the learned ctDNA representations, and the log-risk of the Cox proportional hazards 

@@ -250,9 +250,9 @@ def deep_model(cfg: dict) -> None:
         torch.manual_seed(seed)
 
         # ── train / val / test split ──────────────────────────────────
-        df_test      = df_target.sample(frac=tr_hp["test_frac"], random_state=seed)
+        df_test      = df_target.sample(frac=tr_hp["test_frac"], random_state=eval_cfg["seed_multiplier"]*seed)
         df_train_val = df_target.drop(df_test.index)
-        df_val       = df_train_val.sample(frac=tr_hp["val_frac"], random_state=seed)
+        df_val       = df_train_val.sample(frac=tr_hp["val_frac"], random_state=eval_cfg["seed_multiplier"]*seed)
         df_train     = df_train_val.drop(df_val.index)
 
         # ── latent encoder features (utils) ───────────────────────────
@@ -332,7 +332,7 @@ def deep_model(cfg: dict) -> None:
 
         # ── C-index (IPCW) ────────────────────────────────────────────
         c_uno = sksurv.metrics.concordance_index_ipcw(
-            y_train, y_test, estimate=risk_scores
+            y_train, y_test, estimate=risk_scores, tau=t_max
         )[0]
         C_INDEX.append(c_uno)
 

@@ -2,6 +2,12 @@
 
 <img width="500" alt="SHERLOC_Logo" src="https://github.com/user-attachments/assets/df1d6ac3-1371-47b8-a50d-7705dfcc757a" />
 
+[![CI](https://github.com/AaronMamannToledano/SHERLOC/actions/workflows/ci.yml/badge.svg)](https://github.com/AaronMamannToledano/SHERLOC/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 **SHERLOC: An interpretable deep learning model for longitudinal ctDNA data in survival analysis**
 
 SHERLOC is a deep learning framework specifically designed for survival analysis within the constraints of clinical trials, characterized by short longitudinal trajectories, high-dimensional genomic data, and limited sample sizes.
@@ -25,36 +31,61 @@ In this study, we address the challenge of extracting robust and clinically acti
 ## 📁 Project Structure
 ```text
 SHERLOC/
-├── sherloc/                            # Core architecture and encoders
+├── sherloc/                              # Core architecture and encoders
 │   ├── __init__.py
 │   ├── ctDNA_Dynamics_Encoder/
-│   │   ├── __init__.py                  
-│   │   ├── SHERLOC.py                  # Proposed Method
-│   │   ├── Featurewise_Transformer.py  # Feature-wise Transformer 
-│   │   ├── GRU.py                      # Gated Recurrent Unit
-│   │   ├── MLP_DeepSurv.py             # Multi-Layer Perceptron
-│   │   ├── RNN.py                      # Recurrent Neural Network
-│   │   └── Temporal_Transformer.py.    # Temporal Transformer
+│   │   ├── __init__.py
+│   │   ├── SHERLOC.py                    # Proposed Method
+│   │   ├── Featurewise_Transformer.py    # Feature-wise Transformer
+│   │   ├── Temporal_Transformer.py       # Temporal Transformer
+│   │   ├── GRU.py                        # Gated Recurrent Unit
+│   │   ├── RNN.py                        # Recurrent Neural Network
+│   │   └── MLP_DeepSurv.py               # Multi-Layer Perceptron
 │   ├── Genomic_Interaction_Encoder/
 │   │   ├── __init__.py
-│   │   └── MLP_SolidBiopsy.py          # Pre-trained tissue encoder
-│   └── utils.py                        # Attention-based architecture 
+│   │   └── MLP_SolidBiopsy.py            # Pre-trained tissue encoder
+│   └── utils.py                          # Attention-based architecture
 │
-├── scripts/                        
+├── scripts/
 │   ├── __init__.py
-│   ├── data/
-│   │    ├── msk_chord/                # Pre-training cohort (MSK-CHORD)
-│   │    │    └── README.md
-│   │    ├── target/                   # Cohort with longitudinal ctDNA data (e.g., IMpower150)
-│   │    └──  └── README.md       
-│   ├── config.yaml                    # Configuration file for all scripts
-│   ├── explainability.py              # Explainability script for SHERLOC
-│   ├── train_DL.py                    # Training and evaluation scripts for Deep-Learning models
-│   ├── train_ML.py                    # Training and evaluation scripts for penalized Cox models and RSF 
-│   ├── train_jm.R                     # Training and evaluation scripts for joint models
-│   └── utils.py                       # Data loading, pretraining, and latent feature extraction utilities 
-├── LICENSE      
-├── setup.py                           # Project installation script
+│   ├── config.yaml                       # Configuration file for all scripts
+│   ├── train_DL.py                       # Training & evaluation — Deep-Learning models
+│   ├── train_ML.py                       # Training & evaluation — penalized Cox / RSF
+│   ├── train_ML_FPCA.py                  # Training & evaluation — FPCA + penalized Cox
+│   ├── train_jm.R                        # Training & evaluation — joint models
+│   ├── prepare_jm_data.py                # Data preparation for joint-model training
+│   ├── explainability.py                 # Explainability / interpretability for SHERLOC
+│   ├── utils.py                          # Data loading, pretraining, latent feature extraction
+│   ├── results/                          # Cross-validated metrics (CSV outputs)
+│   └── data/
+│       ├── analysis_main.R               # R analysis entry point
+│       ├── config.R                      # R configuration
+│       ├── msk_chord/                    # Pre-training cohort (MSK-CHORD)
+│       │   └── README.md
+│       └── target/                       # Target cohort with longitudinal ctDNA (e.g., IMpower150)
+│           └── README.md
+│
+├── tests/                                # Smoke tests run in CI
+│   ├── __init__.py
+│   └── test_smoke.py
+│
+├── .github/
+│   ├── workflows/
+│   │   └── ci.yml                        # Lint + pytest on push / PR
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.yml
+│   │   ├── feature_request.yml
+│   │   └── config.yml
+│   └── pull_request_template.md
+│
+├── pyproject.toml                        # Build, dependencies, ruff / black / pytest config
+├── requirements.txt                      # Pinned runtime dependencies
+├── setup.py                              # Compatibility stub (config lives in pyproject.toml)
+├── CITATION.cff                          # "Cite this repository" metadata
+├── CONTRIBUTING.md                       # Contributor guide
+├── REPO_CLEANUP.md                       # One-time housekeeping checklist
+├── LICENSE
+├── .gitignore
 └── README.md
 ```
 
@@ -88,4 +119,89 @@ To run one of the proposed deep learning models, use the module flag from the pr
 python -m scripts.train_DL --config path/to/your_config.yaml
 ```
 
+To train the classical baselines or joint models instead:
 
+```bash
+python -m scripts.train_ML       --config scripts/config.yaml   # Penalized Cox + RSF
+python -m scripts.train_ML_FPCA  --config scripts/config.yaml   # FPCA + penalized Cox
+Rscript scripts/train_jm.R                                      # Joint models
+```
+
+---
+
+## 🔬 Reproducing the paper
+
+| Figure / table | Script |
+| --- | --- |
+| Deep-learning benchmark (iAUC, C-index, IBS) | `scripts/train_DL.py` |
+| Penalized Cox / RSF baselines         | `scripts/train_ML.py` |
+| FPCA + penalized Cox baselines        | `scripts/train_ML_FPCA.py` |
+| Joint-model baselines                 | `scripts/train_jm.R` |
+| SHERLOC interpretability plots        | `scripts/explainability.py` |
+
+All scripts read hyperparameters from `scripts/config.yaml`; copy it and pass `--config`
+to vary settings without editing the default file.
+
+---
+
+## 📊 Data
+
+SHERLOC was developed on two cohorts. Neither is redistributed with this repository:
+
+- **MSK-CHORD** — used to pre-train the Genomic Interaction Encoder. Available from
+  [cBioPortal](https://www.cbioportal.org/study/summary?id=msk_chord_2024) under their
+  data-use terms. Place the unpacked files under `scripts/data/msk_chord/`.
+- **IMpower150 (target cohort)** — longitudinal ctDNA + survival data. Access is
+  controlled by the original study sponsor; see `scripts/data/target/README.md` for
+  the expected file layout.
+
+---
+
+## 🧪 Development
+
+```bash
+pip install -e ".[dev]"
+ruff check .
+black --check .
+pytest
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide.
+
+---
+
+## 📄 Citation
+
+The SHERLOC manuscript is currently **under peer review**. Until the paper is
+out, please cite the software directly — GitHub's "Cite this repository"
+button reads from [`CITATION.cff`](CITATION.cff). A BibTeX entry is also
+provided below; replace it with the published reference once the article is
+accepted.
+
+```bibtex
+@unpublished{mamann_sherloc_2026,
+  author = {Mamann, A. and Das, J. and Benkirane, H. and Bugiotti, F.
+            and Bernard, E. and Besse, B. and Michiels, S. and Cournède, P.-H.},
+  title  = {SHERLOC: An interpretable deep learning model for longitudinal
+            ctDNA data in survival analysis},
+  year   = {2026},
+  note   = {Manuscript submitted for publication.},
+  url    = {https://github.com/AaronMamannToledano/SHERLOC}
+}
+
+@software{mamann_sherloc_software_2026,
+  author  = {Mamann, A. and Das, J. and Benkirane, H. and Bugiotti, F.
+             and Bernard, E. and Besse, B. and Michiels, S. and Cournède, P.-H.},
+  title   = {SHERLOC: An interpretable deep learning model for longitudinal
+             ctDNA data in survival analysis},
+  year    = {2026},
+  url     = {https://github.com/AaronMamannToledano/SHERLOC},
+  version = {0.1.0}
+}
+```
+
+---
+
+## 📜 License
+
+Released under the [MIT License](LICENSE).

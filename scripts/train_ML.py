@@ -196,7 +196,7 @@ def ml_model(cfg: dict) -> None:
         torch.manual_seed(seed)
 
         # Train / test split (no validation set needed for ML models)
-        df_test  = df_target.sample(frac=tr_hp["test_frac"], random_state=seed)
+        df_test  = df_target.sample(frac=tr_hp["test_frac"], random_state=eval_cfg["seed_multiplier"]*seed)
         df_train = df_target.drop(df_test.index)
 
         # Extract latent encoder features for train and test sets
@@ -257,10 +257,10 @@ def ml_model(cfg: dict) -> None:
         elif method == "RSF":
             rsf_hp = ml_cfg["rsf"]
             gcv = GridSearchCV(
-                RandomSurvivalForest(),
+                RandomSurvivalForest(random_state=rsf_hp["random_state"]),
                 param_grid={
-                    "max_depth":         rsf_hp["max_depth"],
-                    "min_samples_split": rsf_hp["min_samples_split"],
+                    "n_estimators":       rsf_hp["n_estimators"],
+                    "min_samples_split":  rsf_hp["min_samples_split"],
                 },
                 cv=cv,
                 error_score=0.5,
@@ -273,7 +273,7 @@ def ml_model(cfg: dict) -> None:
         risk_scores = best_model.predict(df_test_feat[feature_cols])
 
         c_uno = sksurv.metrics.concordance_index_ipcw(
-            y_train, y_test, estimate=risk_scores
+            y_train, y_test, estimate=risk_scores, tau=t_max
         )[0]
         C_INDEX.append(c_uno)
 

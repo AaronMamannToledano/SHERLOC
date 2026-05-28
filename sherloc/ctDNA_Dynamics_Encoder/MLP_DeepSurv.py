@@ -23,7 +23,7 @@ class MLP_DeepSurv(Module):
         self.d_input = d_input
         self.d_channel = d_channel
         self.sigmoid = torch.nn.Sigmoid()
-        self.dropout = torch.nn.Dropout(p=0.3)
+        self.dropout = torch.nn.Dropout(p=0.4)
 
         # Batch normalization for the gene-level VAF features
         self.bn_input = torch.nn.BatchNorm1d((d_input+d_agg_input)*d_channel)

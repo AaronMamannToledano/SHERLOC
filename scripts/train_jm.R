@@ -285,7 +285,7 @@ joint_model <- function(df, df_indices, experiment_number, cfg) {
   ibs_result <- tvBrier(
     joint_fit,
     newdata       = df_test_baseline,
-    Tstart        = jm$ibs_tstart,
+    Tstart        = jm$eval_time_start,
     Thoriz        = jm$eval_time_end,
     integrated    = TRUE,
     cores         = 1L,
@@ -293,8 +293,6 @@ joint_model <- function(df, df_indices, experiment_number, cfg) {
   )$Brier
 
   # Time-dependent AUC at each evaluation timepoint
-  # Bug fix: original code used `length(seq(times))` instead of `times`,
-  # causing the loop to run once with a nonsensical Thoriz value.
   auc_values <- vapply(times, function(t_horiz) {
     tvAUC(
       joint_fit,
@@ -414,8 +412,8 @@ main <- function() {
   message(sprintf("[INFO] Loading indices from: %s", indices_path))
   message(sprintf("[INFO] Results will be saved to: %s", output_path))
 
-  df         <- read.csv(data_path,    row.names = 1, check.names = FALSE)
-  df_indices <- read.csv(indices_path, row.names = 1, check.names = FALSE)
+  df         <- read.csv(data_path,    check.names = FALSE)
+  df_indices <- read.csv(indices_path, check.names = FALSE)
 
   n_experiments <- jm$n_experiments
   experiment_seq <- seq_len(n_experiments)

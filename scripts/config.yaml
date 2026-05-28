@@ -12,13 +12,17 @@ paths:
   # Clinical patient file for pretraining dataset (OS months/status, stage)
   pretraining_cln_patient: "data/msk_chord/data_clinical_patient.txt"
   # Genes shared between pretraining panel and target dataset panel
-  genes_shared:            "data/target/ImPower150_Genes_{n_timepoints}.csv"
+  genes_shared:            "data/target/ImPower150_genes_kept_{n_timepoints}.csv" 
   # Genes mutated in ≥5% of target dataset patients (for ctDNA-dynamics encoder)
-  genes_kept_restricted:   "data/target/ImPower150_geneskept_restricted_{n_timepoints}.csv"
+  genes_kept_restricted:   "data/target/ImPower150_genes_restricted_{n_timepoints}.csv" 
   # Longitudinal gene-level VAF features for target dataset
   gene_ctdna:              "data/target/ImPower150_OS_{n_timepoints}.csv"
   # Longitudinal panel-level aggregated ctDNA features for target dataset
   panel_ctdna:             "data/target/ImPower150_AggFeatures_{n_timepoints}.csv"
+  # Raw IMpower150 patient clinical file (needed by prepare_jm_data.py to
+  # attach TTEOS_rebaseline_BL — the baseline-referenced OS time for JMbayes2).
+  # Must contain columns: full_anonymized_patient_id, TTEOS_rebaseline_BL.
+  target_clinical_raw:     "data/target/EGAF00007700272/anonymized_imp150_ctDNA_patient_clinical_toShare.csv" # "data/target/anonymized_imp150_ctDNA_patient_clinical_toShare.csv"
   # Where to save per-seed results CSV
   output_dir:              "results/"
 
@@ -108,9 +112,10 @@ training:
 # ── Evaluation ───────────────────────────────────────────────────
 evaluation:
   n_seeds:      100
-  time_min_ibs:     2.1    # lower bound for IBS (months)
-  time_min_auc:     2.5    # lower bound for AUC (months)
-  time_max:     40.0   # upper bound for IBS / AUC time grid (months)
+  seed_multiplier: 4   # avoid consecutive seeds across experiments 
+  time_min_ibs: 3      # lower bound for IBS (months)
+  time_min_auc: 3      # lower bound for AUC (months)
+  time_max:     30.0   # upper bound for IBS / AUC time grid (months)
   # Minimum mutation prevalence to keep a gene in the pretraining data
   min_gene_prevalence: 0.02
 
@@ -120,7 +125,7 @@ ml:
   # One of: RSF | penalized_cox
   method: "penalized_cox"
   # Only used when method is penalized_cox: elastic_net | lasso | ridge
-  sub_method: "ridge"
+  sub_method: "elastic_net"
 
   penalized_cox:
     # l1_ratio is set automatically from sub_method:
@@ -129,15 +134,41 @@ ml:
     l1_ratio_override: null
     n_alphas:          20
     max_iter:          5000
-    alpha_min_ratio:   0.005
+    alpha_min_ratio:   0.001
     cv_folds:          4
 
   rsf:
     # Values to search over via GridSearchCV
-    max_depth:         [15, null]   # null = unlimited depth
-    min_samples_split: [3, 6]
+    n_estimators:      [50, 100] 
+    min_samples_split: [2, 6]
     cv_folds:          4
-    n_jobs:            4            # parallel workers (-1 = all cores)
+    n_jobs:            4   # parallel workers (-1 = all cores)
+    random_state:      1
+
+  # ── FPCA + PCA settings (train_ML_FPCA.py only) ──────────────────
+  # Functional PCA is applied per longitudinal feature channel (gene-level
+  # VAF + panel-level ctDNA) before feeding the survival model.
+  fpca_pca:
+    # Number of FPCA components extracted per feature per timepoint.
+    # The original notebook used 2; increase for richer functional summaries.
+    n_fpca_components:           2
+
+    # Timepoint spacing (months) used to build the FDataGrid numeric grid.
+    # Matches BL→0, C2D1→0.75, C3D1→1.50, C4D1→2.25 by default.
+    # Change only if your cohort uses a different collection schedule.
+    timepoint_spacing_months:    0.75
+
+    # How many top FPCA features to keep after permutation importance ranking.
+    # These features are then fed into the final PCA step.
+    n_top_features:              20
+
+    # Final PCA dimensionality applied to the selected FPCA features.
+    # Cannot exceed n_top_features; the script caps it automatically with a warning.
+    n_pca_components:            10
+
+    # Number of trees in the RSF used solely for permutation importance ranking.
+    # Does not affect the final survival model.
+    n_rsf_estimators_importance: 100
 
 # ── Explainability (explainability.py) ───────────────────────────
 # Used only by explainability.py; ignored by the other scripts.
@@ -212,7 +243,7 @@ joint_model:
   # identified as clinical covariates or latent encoder features and
   # included in the Cox survival submodel.
   clinical_prefix: "cln_"
-  encoder_prefix:  "X"
+  encoder_prefix:  "Encoding_"
 
   # ── Feature selection ────────────────────────────────────────────
   # A feature is excluded from the LME submodels if it is non-zero
@@ -225,11 +256,11 @@ joint_model:
   n_burnin: 1000   # burn-in iterations   (default in JMbayes2:  500)
 
   # ── Evaluation time grid ─────────────────────────────────────────
-  eval_time_start: 2.5    # lower bound for IBS / AUC time grid (months)
-  eval_time_end:   40.0   # upper bound for IBS / AUC time grid (months)
-  eval_time_step:  1.0    # step between time points in the grid
-  auc_tstart:      2.5    # Tstart argument passed to tvAUC
-  ibs_tstart:      2.1    # Tstart argument passed to tvBrier
+  eval_time_start: 3      # lower bound for IBS / AUC time grid (months)
+  eval_time_end:   30.0   # upper bound for IBS / AUC time grid (months)
+  eval_time_step:  2.0    # step between time points in the grid
+  auc_tstart:      2.5    # Tstart for tvAUC, different from eval_time_start 
+  ibs_tstart:      2.5    # Tstart for tvBrier, different from eval_time_start
 
   # ── Reproducibility ──────────────────────────────────────────────
   seed:          3

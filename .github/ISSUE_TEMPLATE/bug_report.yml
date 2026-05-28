@@ -1,0 +1,68 @@
+name: Bug report
+description: Report a defect in SHERLOC.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! Please fill in as much as you can —
+        a minimal reproducible example is the single most helpful thing you can include.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the bug.
+      placeholder: When I run `python -m scripts.train_DL`, I get a `RuntimeError: ...`
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: The exact commands and config used.
+      render: bash
+      placeholder: |
+        python -m venv venv && source venv/bin/activate
+        pip install -e .
+        python -m scripts.train_DL --config scripts/config.yaml
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: false
+
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Stack trace / logs
+      render: shell
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.10.12"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "macOS 14.4 / Ubuntu 22.04 / Windows 11"
+    validations:
+      required: true
+
+  - type: textarea
+    id: pip-freeze
+    attributes:
+      label: Installed packages
+      description: Output of `pip freeze`, if you can include it.
+      render: text

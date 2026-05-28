@@ -24,7 +24,7 @@ class GRU_timesteps(Module):
         self.d_input = d_input
         self.d_channel = d_channel
         self.sigmoid = torch.nn.Sigmoid()
-        self.dropout = torch.nn.Dropout(p=0.3)
+        self.dropout = torch.nn.Dropout(p=0.4)
         # Batch normalization for the gene-level VAF features and panel-level features
         self.bn_input = torch.nn.BatchNorm1d(d_channel)
         # GRU to learn a representation of the gene-level VAF features 
@@ -58,8 +58,7 @@ class GRU_timesteps(Module):
             x_xagg = self.bn_input(x_xagg)       
             x_GRU, _ = self.GRU(x_xagg)     
             x_xagg = x_GRU[:, -1, :]                      
-            x_xagg = x_xagg.reshape(x_xagg.shape[0], -1)           
-            x_xagg = self.sigmoid(x_xagg)             
+            x_xagg = x_xagg.reshape(x_xagg.shape[0], -1)                       
             # Pre-trained solid biopsy genomic-interaction representations are batch normalized                                      
             x_hidden_layer_SB = x_hidden_layer_SB.reshape(x_hidden_layer_SB.shape[0], -1)
             x_hidden_layer_SB = self.bn_SB(x_hidden_layer_SB)

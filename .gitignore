@@ -2,10 +2,16 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
 venv/
+.venv/
+env/
 .env
+.python-version
 
 # Distribution / packaging
+build/
+dist/
 eggs/
 .eggs/
 var/
@@ -15,6 +21,21 @@ share/python-wheels/
 *.egg-info/
 *.egg
 
+# Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.cache/
+
+# Type checkers / linters
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+
 # --- R ---
 .Rhistory
 .RData
@@ -22,7 +43,28 @@ share/python-wheels/
 .Rproj.user/
 .Rapp.history
 
+# --- Jupyter ---
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# --- Editors / IDEs ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
 # --- General / OS ---
 .DS_Store
 Thumbs.db
 *.log
+
+# --- Model artifacts / experiment outputs ---
+# Uncomment if large weights / results should stay out of git:
+# *.pt
+# *.pth
+# *.ckpt
+# *.npy
+# *.npz
+# scripts/results/
+# wandb/
+# mlruns/

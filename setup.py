@@ -1,7 +1,5 @@
-from setuptools import setup, find_packages
+# Project configuration has moved to pyproject.toml (PEP 517 / PEP 621).
+# This stub remains so that `pip install -e .` works with older pip versions.
+from setuptools import setup
 
-setup(
-    name="SHERLOC",
-    version="0.1",
-    packages=find_packages(),
-)
+setup()

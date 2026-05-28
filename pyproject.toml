@@ -1,0 +1,98 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sherloc"
+version = "0.1.0"
+description = "An interpretable deep learning model for longitudinal ctDNA data in survival analysis."
+readme = "README.md"
+requires-python = ">=3.10,<3.12"
+license = { file = "LICENSE" }
+authors = [
+    { name = "A. Mamann", email = "aaron.mamann16@gmail.com" },
+    { name = "J. Das" },
+    { name = "H. Benkirane" },
+    { name = "F. Bugiotti" },
+    { name = "E. Bernard" },
+    { name = "B. Besse" },
+    { name = "S. Michiels" },
+    { name = "P.-H. Cournède" },
+]
+maintainers = [
+    { name = "A. Mamann", email = "aaron.mamann16@gmail.com" },
+]
+keywords = [
+    "survival-analysis",
+    "ctdna",
+    "longitudinal",
+    "deep-learning",
+    "oncology",
+    "biomarkers",
+    "interpretable-ml",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Healthcare Industry",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+dependencies = [
+    "numpy>=1.24,<2.0",
+    "pandas>=2.0,<2.3",
+    "scipy>=1.10",
+    "pyyaml>=6.0",
+    "tqdm>=4.65",
+    "torch>=2.0,<2.4",
+    "torchtuples>=0.2.2",
+    "pycox>=0.2.3",
+    "scikit-learn>=1.3,<1.5",
+    "scikit-survival>=0.22.0",
+    "scikit-fda>=0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+    "black>=24.0",
+    "pre-commit>=3.5",
+]
+docs = [
+    "mkdocs>=1.5",
+    "mkdocs-material>=9.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/AaronMamannToledano/SHERLOC"
+Repository = "https://github.com/AaronMamannToledano/SHERLOC"
+Issues = "https://github.com/AaronMamannToledano/SHERLOC/issues"
+
+[tool.setuptools.packages.find]
+include = ["sherloc*", "scripts*"]
+exclude = ["scripts.data*", "tests*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = ["E501"]  # handled by formatter
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"

@@ -24,7 +24,7 @@ class RNN_timesteps(Module):
         self.d_input = d_input
         self.d_channel = d_channel
         self.sigmoid = torch.nn.Sigmoid()
-        self.dropout = torch.nn.Dropout(p=0.3)
+        self.dropout = torch.nn.Dropout(p=0.4)
         # Batch normalization for the gene-level VAF features and panel-level features
         self.bn_input = torch.nn.BatchNorm1d(d_channel)
         # Recurrent Neural Network (RNN) to learn a representation of the gene-level VAF features and 
@@ -61,7 +61,6 @@ class RNN_timesteps(Module):
             x_rnn, _ = self.rnn(x_xagg)     
             x_xagg = x_rnn[:, -1, :]                 
             x_xagg = x_xagg.reshape(x_xagg.shape[0], -1)           
-            x_xagg = self.sigmoid(x_xagg) 
             # Pre-trained solid biopsy genomic-interaction representations are batch normalized                                
             x_hidden_layer_SB = x_hidden_layer_SB.reshape(x_hidden_layer_SB.shape[0], -1)
             x_hidden_layer_SB = self.bn_SB(x_hidden_layer_SB)

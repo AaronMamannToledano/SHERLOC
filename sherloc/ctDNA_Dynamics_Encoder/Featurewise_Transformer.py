@@ -25,7 +25,7 @@ class Featurewise_Transformer(Module):
         self.d_input = d_input
         self.d_channel = d_channel
         self.sigmoid = torch.nn.Sigmoid()
-        self.dropout = torch.nn.Dropout(p=0.3)
+        self.dropout = torch.nn.Dropout(p=0.4)
         # Batch normalization for the gene-level VAF features and panel-level features
         self.bn_input = torch.nn.BatchNorm1d(d_input+d_agg_input)
         # Attention mechanism to learn a representation of the gene-level VAF features and 
@@ -57,7 +57,6 @@ class Featurewise_Transformer(Module):
             x_xagg = self.bn_input(x_xagg)            
             x_xagg, score = self.attention_channels(x_xagg)                        
             x_xagg = x_xagg.reshape(x_xagg.shape[0], -1)           
-            x_xagg = self.sigmoid(x_xagg) 
             # Batch normalization is applied to the pre-trained solid biopsy genomic-interaction 
             # representations and clinical features, and then they are concatenated with the 
             # learned ctDNA representations, to output the log-risk of the Cox proportional hazards                                     
