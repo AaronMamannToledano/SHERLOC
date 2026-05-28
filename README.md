@@ -2,7 +2,6 @@
 
 <img width="500" alt="SHERLOC_Logo" src="https://github.com/user-attachments/assets/df1d6ac3-1371-47b8-a50d-7705dfcc757a" />
 
-[![CI](https://github.com/AaronMamannToledano/SHERLOC/actions/workflows/ci.yml/badge.svg)](https://github.com/AaronMamannToledano/SHERLOC/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
