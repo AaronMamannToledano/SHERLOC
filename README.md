@@ -27,67 +27,6 @@ In this study, we address the challenge of extracting robust and clinically acti
 
 ---
 
-## 📁 Project Structure
-```text
-SHERLOC/
-├── sherloc/                              # Core architecture and encoders
-│   ├── __init__.py
-│   ├── ctDNA_Dynamics_Encoder/
-│   │   ├── __init__.py
-│   │   ├── SHERLOC.py                    # Proposed Method
-│   │   ├── Featurewise_Transformer.py    # Feature-wise Transformer
-│   │   ├── Temporal_Transformer.py       # Temporal Transformer
-│   │   ├── GRU.py                        # Gated Recurrent Unit
-│   │   ├── RNN.py                        # Recurrent Neural Network
-│   │   └── MLP_DeepSurv.py               # Multi-Layer Perceptron
-│   ├── Genomic_Interaction_Encoder/
-│   │   ├── __init__.py
-│   │   └── MLP_SolidBiopsy.py            # Pre-trained tissue encoder
-│   └── utils.py                          # Attention-based architecture
-│
-├── scripts/
-│   ├── __init__.py
-│   ├── config.yaml                       # Configuration file for all scripts
-│   ├── train_DL.py                       # Training & evaluation — Deep-Learning models
-│   ├── train_ML.py                       # Training & evaluation — penalized Cox / RSF
-│   ├── train_ML_FPCA.py                  # Training & evaluation — FPCA + penalized Cox
-│   ├── train_jm.R                        # Training & evaluation — joint models
-│   ├── prepare_jm_data.py                # Data preparation for joint-model training
-│   ├── explainability.py                 # Explainability / interpretability for SHERLOC
-│   ├── utils.py                          # Data loading, pretraining, latent feature extraction
-│   ├── results/                          # Cross-validated metrics (CSV outputs)
-│   └── data/
-│       ├── analysis_main.R               # R analysis entry point
-│       ├── config.R                      # R configuration
-│       ├── msk_chord/                    # Pre-training cohort (MSK-CHORD)
-│       │   └── README.md
-│       └── target/                       # Target cohort with longitudinal ctDNA (e.g., IMpower150)
-│           └── README.md
-│
-├── tests/                                # Smoke tests run in CI
-│   ├── __init__.py
-│   └── test_smoke.py
-│
-├── .github/
-│   ├── workflows/
-│   │   └── ci.yml                        # Lint + pytest on push / PR
-│   ├── ISSUE_TEMPLATE/
-│   │   ├── bug_report.yml
-│   │   ├── feature_request.yml
-│   │   └── config.yml
-│   └── pull_request_template.md
-│
-├── pyproject.toml                        # Build, dependencies, ruff / black / pytest config
-├── requirements.txt                      # Pinned runtime dependencies
-├── setup.py                              # Compatibility stub (config lives in pyproject.toml)
-├── CITATION.cff                          # "Cite this repository" metadata
-├── CONTRIBUTING.md                       # Contributor guide
-├── REPO_CLEANUP.md                       # One-time housekeeping checklist
-├── LICENSE
-├── .gitignore
-└── README.md
-```
-
 ## 🛠 Technical Setup & Installation
 
 To ensure the DL_models package is recognized correctly across the project and to avoid ModuleNotFoundError, follow these installation steps:
@@ -197,6 +136,67 @@ accepted.
   url     = {https://github.com/AaronMamannToledano/SHERLOC},
   version = {0.1.0}
 }
+```
+
+## 📁 Project Structure
+```text
+SHERLOC/
+├── sherloc/                              # Core architecture and encoders
+│   ├── __init__.py
+│   ├── ctDNA_Dynamics_Encoder/
+│   │   ├── __init__.py
+│   │   ├── SHERLOC.py                    # Proposed Method
+│   │   ├── Featurewise_Transformer.py    # Feature-wise Transformer
+│   │   ├── Temporal_Transformer.py       # Temporal Transformer
+│   │   ├── GRU.py                        # Gated Recurrent Unit
+│   │   ├── RNN.py                        # Recurrent Neural Network
+│   │   └── MLP_DeepSurv.py               # Multi-Layer Perceptron
+│   ├── Genomic_Interaction_Encoder/
+│   │   ├── __init__.py
+│   │   └── MLP_SolidBiopsy.py            # Pre-trained tissue encoder
+│   └── utils.py                          # Attention-based architecture
+│
+├── scripts/
+│   ├── __init__.py
+│   ├── config.yaml                       # Configuration file for all scripts
+│   ├── train_DL.py                       # Training & evaluation — Deep-Learning models
+│   ├── train_ML.py                       # Training & evaluation — penalized Cox / RSF
+│   ├── train_ML_FPCA.py                  # Training & evaluation — FPCA + penalized Cox
+│   ├── train_jm.R                        # Training & evaluation — joint models
+│   ├── prepare_jm_data.py                # Data preparation for joint-model training
+│   ├── explainability.py                 # Explainability / interpretability for SHERLOC
+│   ├── utils.py                          # Data loading, pretraining, latent feature extraction
+│   ├── results/                          # Cross-validated metrics (CSV outputs)
+│   └── data/
+│       ├── analysis_main.R               # R analysis entry point
+│       ├── config.R                      # R configuration
+│       ├── msk_chord/                    # Pre-training cohort (MSK-CHORD)
+│       │   └── README.md
+│       └── target/                       # Target cohort with longitudinal ctDNA (e.g., IMpower150)
+│           └── README.md
+│
+├── tests/                                # Smoke tests run in CI
+│   ├── __init__.py
+│   └── test_smoke.py
+│
+├── .github/
+│   ├── workflows/
+│   │   └── ci.yml                        # Lint + pytest on push / PR
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.yml
+│   │   ├── feature_request.yml
+│   │   └── config.yml
+│   └── pull_request_template.md
+│
+├── pyproject.toml                        # Build, dependencies, ruff / black / pytest config
+├── requirements.txt                      # Pinned runtime dependencies
+├── setup.py                              # Compatibility stub (config lives in pyproject.toml)
+├── CITATION.cff                          # "Cite this repository" metadata
+├── CONTRIBUTING.md                       # Contributor guide
+├── REPO_CLEANUP.md                       # One-time housekeeping checklist
+├── LICENSE
+├── .gitignore
+└── README.md
 ```
 
 ---
