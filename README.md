@@ -117,25 +117,19 @@ provided below; replace it with the published reference once the article is
 accepted.
 
 ```bibtex
-@unpublished{mamann_sherloc_2026,
-  author = {Mamann, A. and Das, J. and Benkirane, H. and Bugiotti, F.
-            and Bernard, E. and Besse, B. and Michiels, S. and Cournède, P.-H.},
-  title  = {SHERLOC: An interpretable deep learning model for longitudinal
-            ctDNA data in survival analysis},
-  year   = {2026},
-  note   = {Manuscript submitted for publication.},
-  url    = {https://github.com/AaronMamannToledano/SHERLOC}
+
+@article {mamann_sherloc_2026,
+	author = {Mamann, Aaron and Das, Jyotishka and Benkirane, Hakim and Bugiotti, Francesca and Bernard, Elsa and Besse, Benjamin and Michiels, Stefan and Cournede, Paul-Henry},
+	title = {SHERLOC: An interpretable deep learning model for longitudinal circulating tumor DNA data in survival analysis},
+	elocation-id = {2026.06.04.730097},
+	year = {2026},
+	doi = {10.64898/2026.06.04.730097},
+	URL = {https://www.biorxiv.org/content/early/2026/06/09/2026.06.04.730097},
+	eprint = {https://www.biorxiv.org/content/early/2026/06/09/2026.06.04.730097.full.pdf},
+	journal = {bioRxiv}
 }
 
-@software{mamann_sherloc_software_2026,
-  author  = {Mamann, A. and Das, J. and Benkirane, H. and Bugiotti, F.
-             and Bernard, E. and Besse, B. and Michiels, S. and Cournède, P.-H.},
-  title   = {SHERLOC: An interpretable deep learning model for longitudinal
-             ctDNA data in survival analysis},
-  year    = {2026},
-  url     = {https://github.com/AaronMamannToledano/SHERLOC},
-  version = {0.1.0}
-}
+
 ```
 
 ## 📁 Project Structure
