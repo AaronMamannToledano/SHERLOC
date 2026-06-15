@@ -1,14 +1,23 @@
 # SHERLOC
 
+**SHERLOC: An interpretable deep learning model for longitudinal ctDNA data in survival analysis**
+
 ## 🎬 Interactive Overview
-👉 [aaronmamanntoledano.github.io/SHERLOC](https://aaronmamanntoledano.github.io/SHERLOC/)
+
+![SHERLOC overview](docs/preview.gif)
+
+👉 [Full interactive presentation](https://aaronmamanntoledano.github.io/SHERLOC/)
+
+---
 
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![bioRxiv](https://img.shields.io/badge/bioRxiv-2026.06.04.730097-b31b1b.svg)](https://www.biorxiv.org/content/10.64898/2026.06.04.730097v1)
+[![Preprint](https://img.shields.io/badge/status-under%20review-orange.svg)]()
 
-**SHERLOC: An interpretable deep learning model for longitudinal ctDNA data in survival analysis**
+---
 
 SHERLOC is a deep learning framework specifically designed for survival analysis within the constraints of clinical trials, characterized by short longitudinal trajectories, high-dimensional genomic data, and limited sample sizes.
 
@@ -22,9 +31,10 @@ In this study, we address the challenge of extracting robust and clinically acti
 *   **Pre-trained Genomic Encoders:** Leveraging survival-informed representations from large tissue-biopsy datasets (MSK-CHORD).
 
 ### Key Findings
-*   **Superior Performance:** SHERLOC consistently outperforms classical statistical methods, ensemble models, and state-of-the-art deep learning models in survival discrimination and calibration.
-*   **Clinical Utility:** The ctDNA-based risk score remains a strong independent predictor of overall survival even after adjusting for clinical covariates and standard radiographic response (RECIST).
-*   **Interpretability:** By design, SHERLOC links longitudinal ctDNA evolution to prognosis through a transparent Cox proportional hazards layer, identifying key drivers.
+*   **Superior Performance:** SHERLOC consistently outperforms classical statistical methods, ensemble models, and state-of-the-art deep learning models in survival discrimination (iAUC 77.1, C-index 69.6) and mean squared prediction error (IBS×100 18.3).
+*   **Clinical Utility:** The ctDNA-based risk score remains a strong independent predictor of overall survival (HR 3.60, 95% CI 1.75–7.41, p < 0.001) even after adjusting for clinical covariates and standard radiographic response (RECIST), stratifying patients with a median OS of 27.9 vs 8.6 months (p < 0.0001).
+*   **Interpretability:** By design, SHERLOC links longitudinal ctDNA evolution to prognosis through a transparent Cox proportional hazards layer, identifying key drivers such as mean VAF at C3D1, cfDNA concentration at C4D1, and the KRAS/TP53/KEAP1 genomic axis.
+*   **Robustness:** Performance remains strong even when longitudinal data is reduced to 2–3 time points, reflecting real-world clinical constraints.
 
 ---
 
@@ -50,6 +60,8 @@ Install the repository in editable mode. This allows the scripts in the `scripts
 pip install -e .
 ```
 
+---
+
 ## 💻 Usage
 
 To run one of the proposed deep learning models, use the module flag from the project root. This ensures all internal paths are resolved correctly:
@@ -73,10 +85,10 @@ Rscript scripts/train_jm.R                                      # Joint models
 | Figure / table | Script |
 | --- | --- |
 | Deep-learning benchmark (iAUC, C-index, IBS) | `scripts/train_DL.py` |
-| Penalized Cox / RSF baselines         | `scripts/train_ML.py` |
-| FPCA + penalized Cox baselines        | `scripts/train_ML_FPCA.py` |
-| Joint-model baselines                 | `scripts/train_jm.R` |
-| SHERLOC interpretability plots        | `scripts/explainability.py` |
+| Penalized Cox / RSF baselines | `scripts/train_ML.py` |
+| FPCA + penalized Cox baselines | `scripts/train_ML_FPCA.py` |
+| Joint-model baselines | `scripts/train_jm.R` |
+| SHERLOC interpretability plots | `scripts/explainability.py` |
 
 All scripts read hyperparameters from `scripts/config.yaml`; copy it and pass `--config`
 to vary settings without editing the default file.
@@ -90,9 +102,11 @@ SHERLOC was developed on two cohorts. Neither is redistributed with this reposit
 - **MSK-CHORD** — used to pre-train the Genomic Interaction Encoder. Available from
   [cBioPortal](https://www.cbioportal.org/study/summary?id=msk_chord_2024) under their
   data-use terms. Place the unpacked files under `scripts/data/msk_chord/`.
-- **IMpower150 (target cohort)** — longitudinal ctDNA + survival data. Access is
-  controlled by the original study sponsor; see `scripts/data/target/README.md` for
-  the expected file layout.
+- **IMpower150 (target cohort)** — longitudinal ctDNA + survival data deposited at the
+  European Genome-Phenome Archive under accession
+  [EGAS00001006703](https://ega-archive.org/studies/EGAS00001006703).
+  Access is controlled by the original study sponsor; see `scripts/data/target/README.md`
+  for the expected file layout.
 
 ---
 
@@ -112,28 +126,27 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide.
 ## 📄 Citation
 
 The SHERLOC manuscript is currently **under peer review**. Until the paper is
-out, please cite the software directly — GitHub's "Cite this repository"
-button reads from [`CITATION.cff`](CITATION.cff). A BibTeX entry is also
-provided below; replace it with the published reference once the article is
-accepted.
+out, please cite the preprint directly:
 
 ```bibtex
-
-@article {mamann_sherloc_2026,
-	author = {Mamann, Aaron and Das, Jyotishka and Benkirane, Hakim and Bugiotti, Francesca and Bernard, Elsa and Besse, Benjamin and Michiels, Stefan and Cournede, Paul-Henry},
-	title = {SHERLOC: An interpretable deep learning model for longitudinal circulating tumor DNA data in survival analysis},
-	elocation-id = {2026.06.04.730097},
-	year = {2026},
-	doi = {10.64898/2026.06.04.730097},
-	URL = {https://www.biorxiv.org/content/early/2026/06/09/2026.06.04.730097},
-	eprint = {https://www.biorxiv.org/content/early/2026/06/09/2026.06.04.730097.full.pdf},
-	journal = {bioRxiv}
+@article{mamann_sherloc_2026,
+  author  = {Mamann, Aaron and Das, Jyotishka and Benkirane, Hakim and Bugiotti, Francesca
+             and Bernard, Elsa and Besse, Benjamin and Michiels, Stefan and Cournede, Paul-Henry},
+  title   = {SHERLOC: An interpretable deep learning model for longitudinal circulating tumor
+             DNA data in survival analysis},
+  journal = {bioRxiv},
+  year    = {2026},
+  doi     = {10.64898/2026.06.04.730097},
+  url     = {https://www.biorxiv.org/content/10.64898/2026.06.04.730097v1}
 }
-
-
 ```
 
+> Once accepted, please replace this entry with the published journal reference.
+
+---
+
 ## 📁 Project Structure
+
 ```text
 SHERLOC/
 ├── sherloc/                              # Core architecture and encoders
@@ -169,6 +182,10 @@ SHERLOC/
 │       │   └── README.md
 │       └── target/                       # Target cohort with longitudinal ctDNA (e.g., IMpower150)
 │           └── README.md
+│
+├── docs/
+│   ├── index.html                        # Interactive overview (GitHub Pages)
+│   └── preview.gif                       # Animated preview for README
 │
 ├── tests/                                # Smoke tests run in CI
 │   ├── __init__.py
