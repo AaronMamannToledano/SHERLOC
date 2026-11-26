@@ -68,3 +68,11 @@ Thumbs.db
 # scripts/results/
 # wandb/
 # mlruns/
+
+# V2 analyses: data and outputs are never committed
+analyses/v2/results/
+analyses/v2/data/
+analyses/v2/data_impower150/
+analyses/v2/pada1_raw/
+analyses/v2/impower150_raw/
+analyses/v2/article/

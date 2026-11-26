@@ -1,0 +1,63 @@
+paths:
+  data_dir: data_impower150/2tp/
+  dataset_file: IMP150_SHERLOC_dataset.csv
+  gene_frequency_file: gene_frequency.csv
+  genes_shared_file: genes_kept.csv
+  msk_mutations: data/msk_chord_2024/data_mutations.txt
+  msk_cln_sample: data/msk_chord_2024/data_clinical_sample.txt
+  msk_cln_patient: data/msk_chord_2024/data_clinical_patient.txt
+  output_dir: results/impower150_2tp/
+timepoints:
+- BL
+- C2D1
+features: {}
+model:
+  name: SHERLOC_IMP150_2tp
+  method: SHERLOC_v2
+  output_sigmoid: true
+  gene_mode: null
+  genes_file: genes_restricted.csv
+  panel_features:
+  - max_of_AF
+  - mean_of_AF
+  - cfDNA_conc
+  - n_kl
+  clinical:
+  - pdl1_high
+  - nb_mets
+  - baseline_ECOG
+  - age
+  - sex_female
+  - sld_baseline
+  - Bev_CP
+  - Atezo_CP
+  static_features: []
+  encoder_n_genes: null
+  log1p: false
+pretraining:
+  lr: 0.01
+  batch_size: 500
+  epochs: 512
+  patience: 100
+  val_frac: 0.4
+  dropout: 0.5
+  min_gene_prevalence: 0.02
+  cancer_types:
+  - Breast Cancer
+  - Colorectal Cancer
+  - Non-Small Cell Lung Cancer
+  - Pancreatic Cancer
+  - Prostate Cancer
+training:
+  lr: 0.005
+  batch_size: 50
+  epochs: 256
+  patience: 20
+  val_frac: 0.2
+  test_frac: 0.3
+  safe_cox_loss: true
+evaluation:
+  n_seeds: 100
+  seed_multiplier: 4
+  time_min: 3.0
+  time_max: 30.0

@@ -1,0 +1,74 @@
+evaluation:
+  n_seeds: 100
+  seed_multiplier: 4
+  time_max: 36.0
+  time_min: 3.0
+features:
+  driver_vaf_threshold: 0.5
+model:
+  clinical:
+  - Age_At_Inclusion
+  - PR_Allred_Score
+  - ER_Allred_Score
+  - Tumor_Grade_Prim_T
+  - ps_bas
+  - met_visceral
+  - nb_mets
+  - del_tp_meta
+  - HER2_low
+  encoder_breast_only: false
+  encoder_n_genes: 20
+  genes: null
+  log1p: false
+  method: SHERLOC_v2
+  n_top_genes: 10
+  name: SHERLOC_calibrated_response_longitudinal
+  output_scale: 2.0
+  output_sigmoid: true
+  panel_features:
+  - mean_VAF
+  - nb_driver_VAF_above_05
+  - resp_logratio_mean_VAF
+  - resp_logratio_max_VAF
+  - resp_detected
+  - resp_clearance
+  - resp_frac_mut_cleared
+  - resp_nb_new_mut
+  - resp_nb_driver_lost
+  static_features: []
+paths:
+  cln_curated: pada1_raw/cln/curated/cln_curated.tsv
+  cln_extra: pada1_raw/cln/20231229_Export_GH/20231229_Export_GH.csv
+  data_dir: data/
+  mol_calls: pada1_raw/mol/curated/cfdna_calls_after_qc.tsv.gz
+  msk_cln_patient: data/msk_chord_2024/data_clinical_patient.txt
+  msk_cln_sample: data/msk_chord_2024/data_clinical_sample.txt
+  msk_mutations: data/msk_chord_2024/data_mutations.txt
+  output_dir: results/
+  review_driver: pada1_raw/mol/curated/mut_file_driver_reviewed.csv
+  extra_features_file: response_longitudinal.csv
+pretraining:
+  batch_size: 500
+  cancer_types:
+  - Breast Cancer
+  - Colorectal Cancer
+  - Non-Small Cell Lung Cancer
+  - Pancreatic Cancer
+  - Prostate Cancer
+  dropout: 0.5
+  epochs: 512
+  lr: 0.01
+  min_gene_prevalence: 0.02
+  patience: 100
+  val_frac: 0.4
+timepoints:
+- BL
+- C2
+training:
+  batch_size: 50
+  epochs: 100
+  lr: 0.005
+  patience: 20
+  safe_cox_loss: true
+  test_frac: 0.3
+  val_frac: 0
