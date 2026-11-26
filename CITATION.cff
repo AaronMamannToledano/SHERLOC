@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use SHERLOC in your research, please cite the manuscript and this software."
-title: "SHERLOC: an interpretable deep-learning model of longitudinal ctDNA for calibrated early treatment monitoring in advanced breast cancer (PADA-1) and non-small-cell lung cancer (IMpower150)"
+title: "SHERLOC: interpretable deep learning of longitudinal ctDNA for early treatment monitoring in breast and lung cancer"
 abstract: >-
   SHERLOC (Shared and Exclusive Representations of Longitudinal ctDNA) is an
   interpretable deep Cox model for short longitudinal ctDNA trajectories in
@@ -46,7 +46,7 @@ date-released: "2026-11-26"
 # Fill in the journal / DOI fields when accepted and uncomment.
 preferred-citation:
   type: article
-  title: "SHERLOC: an interpretable deep-learning model of longitudinal ctDNA for calibrated early treatment monitoring in advanced breast cancer (PADA-1) and non-small-cell lung cancer (IMpower150)"
+  title: "SHERLOC: interpretable deep learning of longitudinal ctDNA for early treatment monitoring in breast and lung cancer"
   authors:
     - family-names: "Mamann"
       given-names: "A."

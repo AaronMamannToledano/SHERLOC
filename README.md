@@ -1,6 +1,6 @@
 # SHERLOC
 
-**SHERLOC: an interpretable deep-learning model of longitudinal ctDNA for calibrated early treatment monitoring in advanced breast cancer (PADA-1) and non-small-cell lung cancer (IMpower150)**
+**SHERLOC: interpretable deep learning of longitudinal ctDNA for early treatment monitoring in breast and lung cancer**
 
 SHERLOC (*Shared and Exclusive Representations of Longitudinal ctDNA*) reads the same ctDNA data along time and across
 genes, and feeds every learned representation to a Cox layer with its own coefficient.
@@ -161,9 +161,8 @@ out, please cite the preprint directly:
 @article{mamann_sherloc_2026,
   author  = {Mamann, Aaron and Das, Jyotishka and Benkirane, Hakim and Bugiotti, Francesca
              and Bernard, Elsa and Besse, Benjamin and Michiels, Stefan and Cournede, Paul-Henry},
-  title   = {SHERLOC: an interpretable deep-learning model of longitudinal ctDNA for calibrated early
-             treatment monitoring in advanced breast cancer (PADA-1) and non-small-cell lung cancer
-             (IMpower150)},
+  title   = {SHERLOC: interpretable deep learning of longitudinal ctDNA for early treatment monitoring
+             in breast and lung cancer},
   journal = {bioRxiv},
   year    = {2026},
   doi     = {10.64898/2026.06.04.730097},
