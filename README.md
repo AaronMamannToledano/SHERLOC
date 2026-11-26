@@ -212,8 +212,7 @@ SHERLOC/
 │   └── v2/                               # V2 article: PADA-1 and IMpower150 (see its README)
 │
 ├── docs/
-│   ├── index.html                        # Interactive overview (GitHub Pages)
-│   ├── preview.gif                       # Animated preview for README
+│   ├── index.html                        # Overview page (GitHub Pages)
 │   └── sherloc_architecture.{svg,png}    # Architecture figure (Figure 1b of the V2 article)
 │
 ├── tests/                                # Smoke tests run in CI
