@@ -1,6 +1,11 @@
 # SHERLOC
 
-**SHERLOC: An interpretable deep learning model for longitudinal ctDNA data in survival analysis**
+**SHERLOC: an interpretable deep-learning model of longitudinal ctDNA for calibrated early treatment monitoring in advanced breast cancer (PADA-1) and non-small-cell lung cancer (IMpower150)**
+
+SHERLOC (*Shared and Exclusive Representations of Longitudinal ctDNA*) reads the same ctDNA data along time and across
+genes, and feeds every learned representation to a Cox layer with its own coefficient.
+
+![SHERLOC architecture](docs/sherloc_architecture.png)
 
 ## 🎬 Interactive Overview
 
@@ -14,7 +19,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![bioRxiv](https://img.shields.io/badge/bioRxiv-2026.06.04.730097-b31b1b.svg)](https://www.biorxiv.org/content/10.64898/2026.06.04.730097v1)
+[![bioRxiv](https://img.shields.io/badge/bioRxiv-2026.06.04.730097-b31b1b.svg)](https://doi.org/10.64898/2026.06.04.730097)
 [![Preprint](https://img.shields.io/badge/status-under%20review-orange.svg)]()
 
 ---
@@ -25,16 +30,32 @@ SHERLOC is a deep learning framework specifically designed for survival analysis
 
 ## 📖 Overview
 
-In this study, we address the challenge of extracting robust and clinically actionable prognostic information from high-dimensional ctDNA measurements. SHERLOC integrates:
-*   **Shared Temporal Representations:** Learned across gene-level variant allele frequencies (VAFs).
-*   **Feature-Specific Patterns:** For panel-level biomarkers (mean VAF, cfDNA concentration, etc.).
-*   **Pre-trained Genomic Encoders:** Leveraging survival-informed representations from large tissue-biopsy datasets (MSK-CHORD).
+Trials sample plasma at two to four time points, panels measure tens of genes and cohorts include a few hundred
+patients. SHERLOC is built for this setting, with very few parameters per kind of information:
 
-### Key Findings
-*   **Superior Performance:** SHERLOC consistently outperforms classical statistical methods, ensemble models, and state-of-the-art deep learning models in survival discrimination (iAUC 77.1, C-index 69.6) and mean squared prediction error (IBS×100 18.3).
-*   **Clinical Utility:** The ctDNA-based risk score remains a strong independent predictor of overall survival (HR 3.60, 95% CI 1.75–7.41, p < 0.001) even after adjusting for clinical covariates and standard radiographic response (RECIST), stratifying patients with a median OS of 27.9 vs 8.6 months (p < 0.0001).
-*   **Interpretability:** By design, SHERLOC links longitudinal ctDNA evolution to prognosis through a transparent Cox proportional hazards layer, identifying key drivers such as mean VAF at C3D1, cfDNA concentration at C4D1, and the KRAS/TP53/KEAP1 genomic axis.
-*   **Robustness:** Performance remains strong even when longitudinal data is reduced to 2–3 time points, reflecting real-world clinical constraints.
+*   **ctDNA-dynamics encoder (shared and exclusive temporal representations):** one temporal kernel shared by all
+    gene-level VAF trajectories, and one temporal map per panel-level feature (mean VAF, driver count, cfDNA
+    concentration, early-response features).
+*   **Genomic-interaction encoder:** pre-trained on the overall survival of 24,947 patients with tissue sequencing
+    (MSK-CHORD) and frozen; it encodes the mutation profile at each draw, and batch normalisation adapts it to plasma.
+*   **Cox layer:** every representation and clinical covariate enters with its own coefficient.
+*   **Out-of-fold recalibration:** the bounded risk score is rescaled into calibrated individual survival
+    probabilities without changing the ranking of patients (`sherloc/recalibration.py`).
+
+### Key findings (V2: PADA-1 and IMpower150)
+
+*   **Discrimination:** best C-index and integrated AUC among twelve methods (deep, recurrent and attention-based
+    networks, penalised Cox models, random survival forests, FPCRF, Bayesian joint model) on 100 identical splits:
+    C-index 0.696 / iAUC 0.770 in IMpower150 (landmark C4D1) and 0.733 / 0.765 in PADA-1 (landmark at cycle 2).
+*   **Added value over clinical covariates** (10 × 5-fold cross-fitting): C-index 0.73 vs 0.62 (PADA-1) and 0.70 vs 0.63
+    (IMpower150); at 80% specificity, 60% of the patients who died within the horizon were flagged vs 34% and 44%
+    with the clinical model.
+*   **Beyond radiological response:** SHERLOC risk groups separate survival within RECIST stable disease and partial
+    response in both trials and outperform the absence of objective response and ctDNA-response rules at the same
+    flagging rate.
+*   **Interpretability:** calibrated marginal effects, checked across independently trained models, show that the
+    score is driven by panel-level ctDNA burden and its on-treatment change, and by the mutation profile through the
+    pre-trained encoder (TP53, KEAP1, KRAS in NSCLC; TP53 vs FOXA1 and GATA3 in breast cancer).
 
 ---
 
@@ -82,6 +103,11 @@ Rscript scripts/train_jm.R                                      # Joint models
 
 ## 🔬 Reproducing the paper
 
+**V2 (PADA-1 and IMpower150):** see [`analyses/v2/README.md`](analyses/v2/README.md), which maps every figure and
+table of the article to the script that produces it.
+
+**V1 (IMpower150):**
+
 | Figure / table | Script |
 | --- | --- |
 | Deep-learning benchmark (iAUC, C-index, IBS) | `scripts/train_DL.py` |
@@ -102,6 +128,9 @@ SHERLOC was developed on two cohorts. Neither is redistributed with this reposit
 - **MSK-CHORD** — used to pre-train the Genomic Interaction Encoder. Available from
   [cBioPortal](https://www.cbioportal.org/study/summary?id=msk_chord_2024) under their
   data-use terms. Place the unpacked files under `scripts/data/msk_chord/`.
+- **PADA-1 (target cohort, V2)** — ER+/HER2− advanced breast cancer (NCT03079011), plasma sequenced with
+  Guardant360 LDT (497 genes). Deidentified data are available on request to Unicancer
+  (pada-1@unicancer.fr), subject to the trial's data access policy.
 - **IMpower150 (target cohort)** — longitudinal ctDNA + survival data deposited at the
   European Genome-Phenome Archive under accession
   [EGAS00001006703](https://ega-archive.org/studies/EGAS00001006703).
@@ -132,12 +161,13 @@ out, please cite the preprint directly:
 @article{mamann_sherloc_2026,
   author  = {Mamann, Aaron and Das, Jyotishka and Benkirane, Hakim and Bugiotti, Francesca
              and Bernard, Elsa and Besse, Benjamin and Michiels, Stefan and Cournede, Paul-Henry},
-  title   = {SHERLOC: An interpretable deep learning model for longitudinal circulating tumor
-             DNA data in survival analysis},
+  title   = {SHERLOC: an interpretable deep-learning model of longitudinal ctDNA for calibrated early
+             treatment monitoring in advanced breast cancer (PADA-1) and non-small-cell lung cancer
+             (IMpower150)},
   journal = {bioRxiv},
   year    = {2026},
   doi     = {10.64898/2026.06.04.730097},
-  url     = {https://www.biorxiv.org/content/10.64898/2026.06.04.730097v1}
+  url     = {https://doi.org/10.64898/2026.06.04.730097}
 }
 ```
 
@@ -162,6 +192,8 @@ SHERLOC/
 │   ├── Genomic_Interaction_Encoder/
 │   │   ├── __init__.py
 │   │   └── MLP_SolidBiopsy.py            # Pre-trained tissue encoder
+│   ├── losses.py                         # Cox loss defined on event-free mini-batches
+│   ├── recalibration.py                  # Out-of-fold recalibration (slope + Breslow)
 │   └── utils.py                          # Attention-based architecture
 │
 ├── scripts/
@@ -183,13 +215,19 @@ SHERLOC/
 │       └── target/                       # Target cohort with longitudinal ctDNA (e.g., IMpower150)
 │           └── README.md
 │
+├── analyses/
+│   └── v2/                               # V2 article: PADA-1 and IMpower150 (see its README)
+│
 ├── docs/
 │   ├── index.html                        # Interactive overview (GitHub Pages)
-│   └── preview.gif                       # Animated preview for README
+│   ├── preview.gif                       # Animated preview for README
+│   └── sherloc_architecture.{svg,png}    # Architecture figure (Figure 1b of the V2 article)
 │
 ├── tests/                                # Smoke tests run in CI
 │   ├── __init__.py
-│   └── test_smoke.py
+│   ├── test_smoke.py
+│   ├── test_losses.py
+│   └── test_recalibration.py
 │
 ├── .github/
 │   ├── workflows/
@@ -204,6 +242,7 @@ SHERLOC/
 ├── requirements.txt                      # Pinned runtime dependencies
 ├── setup.py                              # Compatibility stub (config lives in pyproject.toml)
 ├── CITATION.cff                          # "Cite this repository" metadata
+├── CHANGELOG.md
 ├── CONTRIBUTING.md                       # Contributor guide
 ├── REPO_CLEANUP.md                       # One-time housekeeping checklist
 ├── LICENSE
