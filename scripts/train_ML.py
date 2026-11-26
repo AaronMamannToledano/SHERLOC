@@ -43,6 +43,8 @@ from sksurv.metrics import integrated_brier_score
 from sksurv.linear_model import CoxnetSurvivalAnalysis
 from sksurv.ensemble import RandomSurvivalForest
 from sklearn.model_selection import GridSearchCV, KFold
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 from scripts.utils import (
     load_config,
@@ -75,6 +77,7 @@ def _build_feature_matrix(
     surv_time: str,
     surv_event: str,
     lat_features: torch.Tensor,
+    clinical_cols: list[str] | None = None,
 ) -> pd.DataFrame:
     """
     Assemble the flat feature matrix used by scikit-survival models.
@@ -83,6 +86,7 @@ def _build_feature_matrix(
     - Longitudinal gene-level VAF features (gene × timepoint)
     - Longitudinal panel-level aggregated ctDNA features
     - Latent genomic-encoder features (flattened across timepoints)
+    - Clinical covariates (``clinical_cols``), as described in the paper
     - Survival target columns (kept for ``get_target`` calls)
 
     Args:
@@ -109,7 +113,8 @@ def _build_feature_matrix(
         if f"{g}_{tp}" in df.columns
     ]
     survival_cols = [surv_time, surv_event]
-    keep = [c for c in gene_tp_cols + agg_feature_cols + survival_cols if c in df.columns]
+    clinical_cols = [c for c in (clinical_cols or []) if c in df.columns]
+    keep = [c for c in gene_tp_cols + agg_feature_cols + clinical_cols + survival_cols if c in df.columns]
     df_out = df[keep].copy()
 
     # Append flattened latent encoder features
@@ -119,6 +124,33 @@ def _build_feature_matrix(
     df_out.columns = df_out.columns.map(str)
 
     return df_out
+
+
+def _fit_coxnet(X, y, l1_ratio, cox_hp, cv, standardize):
+    """Penalised Cox: alpha path, then grid search over the path by cross-validation.
+
+    Features are standardised inside the pipeline (fitted on the training folds only) when
+    ``standardize`` is true. If the path diverges (``ArithmeticError``, which happens on some
+    splits with unscaled features), it is refitted with a 10x larger ``alpha_min_ratio``.
+    """
+    amr = cox_hp["alpha_min_ratio"]
+    for _ in range(4):
+        try:
+            path = CoxnetSurvivalAnalysis(l1_ratio=l1_ratio, n_alphas=cox_hp["n_alphas"],
+                                          max_iter=cox_hp["max_iter"], alpha_min_ratio=amr)
+            Xp = StandardScaler().fit_transform(X) if standardize else X
+            path.fit(Xp, y)
+            est = CoxnetSurvivalAnalysis(l1_ratio=l1_ratio, max_iter=cox_hp["max_iter"], fit_baseline_model=True)
+            if standardize:
+                pipe = make_pipeline(StandardScaler(), est)
+                grid = {"coxnetsurvivalanalysis__alphas": [[v] for v in path.alphas_]}
+            else:
+                pipe, grid = est, {"alphas": [[v] for v in path.alphas_]}
+            return GridSearchCV(pipe, param_grid=grid, cv=cv, error_score=0.5, n_jobs=1).fit(X, y)
+        except ArithmeticError:
+            amr *= 10
+            print(f"[WARN] Coxnet path diverged; retrying with alpha_min_ratio={amr:g}")
+    raise ArithmeticError("Coxnet path diverged for every alpha_min_ratio tried")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -181,6 +213,9 @@ def ml_model(cfg: dict) -> None:
     df_target, agg_feature_cols = prepare_target_data(cfg)
     print(f"[INFO] Target cohort: {len(df_target)} patients")
 
+    # Clinical covariates (missing values imputed with the training median of each split)
+    clinical_cols = cfg["target_clinical_features"] if ml_cfg.get("include_clinical", True) else []
+
     # ── helpers ───────────────────────────────────────────────────────────────
     get_target = lambda df: (df[surv_time].values, df[surv_event].values)
     t_min_ibs  = eval_cfg["time_min_ibs"]
@@ -206,12 +241,17 @@ def ml_model(cfg: dict) -> None:
         # Assemble flat feature matrices
         df_train_feat = _build_feature_matrix(
             df_train, agg_feature_cols, gene_list_restricted,
-            timepoints, surv_time, surv_event, lat_train
+            timepoints, surv_time, surv_event, lat_train, clinical_cols
         )
         df_test_feat = _build_feature_matrix(
             df_test, agg_feature_cols, gene_list_restricted,
-            timepoints, surv_time, surv_event, lat_test
+            timepoints, surv_time, surv_event, lat_test, clinical_cols
         )
+
+        for c in clinical_cols:
+            med = df_train_feat[c].median()
+            df_train_feat[c] = df_train_feat[c].fillna(med)
+            df_test_feat[c] = df_test_feat[c].fillna(med)
 
         feature_cols = [
             c for c in df_train_feat.columns
@@ -233,26 +273,8 @@ def ml_model(cfg: dict) -> None:
                 _L1_RATIO[sub_method]
             )
             cox_hp = ml_cfg["penalized_cox"]
-            # Step 1: fit a path to get candidate alphas
-            estimator = CoxnetSurvivalAnalysis(
-                l1_ratio=l1_ratio,
-                n_alphas=cox_hp["n_alphas"],
-                max_iter=cox_hp["max_iter"],
-                alpha_min_ratio=cox_hp["alpha_min_ratio"],
-            )
-            estimator.fit(df_train_feat[feature_cols], y_train)
-            # Step 2: grid search over the candidate alphas
-            gcv = GridSearchCV(
-                CoxnetSurvivalAnalysis(
-                    l1_ratio=l1_ratio,
-                    max_iter=cox_hp["max_iter"],
-                    fit_baseline_model=True,
-                ),
-                param_grid={"alphas": [[v] for v in estimator.alphas_]},
-                cv=cv,
-                error_score=0.5,
-                n_jobs=1,
-            ).fit(df_train_feat[feature_cols], y_train)
+            gcv = _fit_coxnet(df_train_feat[feature_cols], y_train, l1_ratio, cox_hp, cv,
+                              standardize=cox_hp.get("standardize", True))
 
         elif method == "RSF":
             rsf_hp = ml_cfg["rsf"]

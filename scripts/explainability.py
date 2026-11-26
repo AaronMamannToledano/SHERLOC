@@ -41,6 +41,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torchtuples as tt
 from pycox.models import CoxPH
+from sherloc.losses import SafeCoxPHLoss
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -234,7 +235,7 @@ def explainability(cfg: dict) -> None:
         d_output=1,
         device=DEVICE,
     )
-    model = CoxPH(net, tt.optim.Adam)
+    model = CoxPH(net, tt.optim.Adam, loss=SafeCoxPHLoss())
     model.optimizer.set_lr(tr_hp["lr"])
 
     train_batch = _extract_batch(trainloader)
@@ -312,7 +313,7 @@ def explainability(cfg: dict) -> None:
             filter(lambda p: p.requires_grad, model_bt_net.parameters()),
             lr=exp_cfg["lr"],
         )
-        model_bt = CoxPH(model_bt_net, optimizer_bt)
+        model_bt = CoxPH(model_bt_net, optimizer_bt, loss=SafeCoxPHLoss())
 
         sub_train_batch = _extract_batch(sub_trainloader)
         bt_inputs, bt_targets, bt_other, bt_agg, bt_gene_enc = sub_train_batch

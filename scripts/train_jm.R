@@ -31,6 +31,14 @@
 #  2. Test-set scaling: the original scaled train and test sets independently,
 #     introducing data leakage. Fixed by saving training-set center/scale and
 #     applying them to the test set.
+#  3. Predictions: the original evaluated the joint model on the test patients'
+#     baseline rows only, so the on-treatment samples were never used. Test
+#     patients are now evaluated with all their samples observed up to Tstart
+#     (joint_model.use_longitudinal_history, default true); JMbayes2 conditions
+#     the prediction on survival up to Tstart. Tstart should be at or after the
+#     last sample used (the landmark).
+#  4. tvBrier now uses joint_model.ibs_tstart (it was set in config.yaml but
+#     unused; eval_time_start was passed instead).
 
 suppressPackageStartupMessages({
   library(yaml)
@@ -43,6 +51,8 @@ suppressPackageStartupMessages({
   library(GLMMadaptive)
 })
 
+
+`%||%` <- function(a, b) if (is.null(a)) b else a
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Config helpers
@@ -278,14 +288,25 @@ joint_model <- function(df, df_indices, experiment_number, cfg) {
     n_burnin = jm$n_burnin
   )
 
-  # ── Evaluate on the test set (baseline timepoint only) ────────────
-  df_test_baseline <- df_test %>% filter(.data[[tp_col]] == 0)
+  # ── Evaluate on the test set ──────────────────────────────────────
+  # Longitudinal history of each test patient: every sample observed up to
+  # Tstart (or the baseline row only if use_longitudinal_history is false).
+  use_hist <- isTRUE(jm$use_longitudinal_history %||% TRUE)
+  ibs_tstart <- jm$ibs_tstart %||% jm$eval_time_start
+  history_until <- function(t0) {
+    if (use_hist) df_test %>% filter(.data[[tp_col]] <= t0)
+    else df_test %>% filter(.data[[tp_col]] == 0)
+  }
+  if (use_hist && max(df_test[[tp_col]]) > min(ibs_tstart, jm$auc_tstart)) {
+    warning("[WARN] Some samples are after Tstart and will not be used; ",
+            "set ibs_tstart / auc_tstart at or after the last sample (landmark).")
+  }
 
   # Integrated Brier score
   ibs_result <- tvBrier(
     joint_fit,
-    newdata       = df_test_baseline,
-    Tstart        = jm$eval_time_start,
+    newdata       = history_until(ibs_tstart),
+    Tstart        = ibs_tstart,
     Thoriz        = jm$eval_time_end,
     integrated    = TRUE,
     cores         = 1L,
@@ -296,7 +317,7 @@ joint_model <- function(df, df_indices, experiment_number, cfg) {
   auc_values <- vapply(times, function(t_horiz) {
     tvAUC(
       joint_fit,
-      newdata      = df_test_baseline,
+      newdata      = history_until(jm$auc_tstart),
       Tstart       = jm$auc_tstart,
       Thoriz       = t_horiz,
       cores        = 1L,

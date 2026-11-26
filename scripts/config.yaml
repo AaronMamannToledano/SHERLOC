@@ -102,6 +102,9 @@ pretraining:
   dropout:      0.5
 
 training:
+  # Event-free mini-batches contribute 0 to the Cox loss instead of NaN (see sherloc/losses.py).
+  # Set to false only to reproduce the original (v1) runs.
+  safe_cox_loss: true
   lr:           0.005
   batch_size:   50
   epochs:       256
@@ -122,6 +125,8 @@ evaluation:
 # ── Machine Learning models (train_ML.py) ────────────────────────
 # Used only by train_ML.py; ignored by train_DL.py.
 ml:
+  # Include the target clinical covariates in the feature matrix (as in the paper).
+  include_clinical: true
   # One of: RSF | penalized_cox
   method: "penalized_cox"
   # Only used when method is penalized_cox: elastic_net | lasso | ridge
@@ -135,6 +140,8 @@ ml:
     n_alphas:          20
     max_iter:          5000
     alpha_min_ratio:   0.001
+    # Standardise features before Coxnet (strongly recommended: without it ridge collapses).
+    standardize:       true
     cv_folds:          4
 
   rsf:
@@ -261,6 +268,8 @@ joint_model:
   eval_time_step:  2.0    # step between time points in the grid
   auc_tstart:      2.5    # Tstart for tvAUC, different from eval_time_start 
   ibs_tstart:      2.5    # Tstart for tvBrier, different from eval_time_start
+  # Evaluate test patients with all samples observed up to Tstart (not only baseline).
+  use_longitudinal_history: true
 
   # ── Reproducibility ──────────────────────────────────────────────
   seed:          3

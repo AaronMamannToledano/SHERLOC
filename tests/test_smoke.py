@@ -20,3 +20,7 @@ def test_encoders_importable():
     from sherloc.ctDNA_Dynamics_Encoder import Featurewise_Transformer  # noqa: F401
     from sherloc.ctDNA_Dynamics_Encoder import Temporal_Transformer  # noqa: F401
     from sherloc.Genomic_Interaction_Encoder import MLP_SolidBiopsy  # noqa: F401
+
+
+def test_losses_importable():
+    from sherloc.losses import SafeCoxPHLoss  # noqa: F401

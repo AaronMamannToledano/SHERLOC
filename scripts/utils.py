@@ -29,6 +29,7 @@ from scipy import stats
 import torch
 import torchtuples as tt
 from pycox.models import CoxPH
+from sherloc.losses import SafeCoxPHLoss
 from sklearn.exceptions import ConvergenceWarning
 from torch.utils.data import DataLoader, Dataset
 
@@ -433,7 +434,7 @@ def pretrain_encoder(
         device=device,
         dropout=pt_hp["dropout"],
     )
-    model = CoxPH(net, tt.optim.Adam)
+    model = CoxPH(net, tt.optim.Adam, loss=SafeCoxPHLoss())
     model.optimizer.set_lr(pt_hp["lr"])
 
     # Single batch for now. The .fit() method will split this into smaller batches later. 

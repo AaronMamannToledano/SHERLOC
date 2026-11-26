@@ -40,6 +40,7 @@ import pandas as pd
 import torch
 import torchtuples as tt
 from pycox.models import CoxPH
+from sherloc.losses import SafeCoxPHLoss
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
@@ -298,7 +299,8 @@ def deep_model(cfg: dict) -> None:
             d_output=1,
             device=DEVICE,
         )
-        model = CoxPH(net, tt.optim.Adam)
+        loss = SafeCoxPHLoss() if tr_hp.get("safe_cox_loss", True) else None
+        model = CoxPH(net, tt.optim.Adam, loss=loss)
         model.optimizer.set_lr(tr_hp["lr"])
 
         # ── training ──────────────────────────────────────────────────
