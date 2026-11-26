@@ -7,12 +7,6 @@ genes, and feeds every learned representation to a Cox layer with its own coeffi
 
 ![SHERLOC architecture](docs/sherloc_architecture.png)
 
-## 🎬 Interactive Overview
-
-![SHERLOC overview](docs/preview.gif)
-
-👉 [Full interactive presentation](https://aaronmamanntoledano.github.io/SHERLOC/)
-
 ---
 
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11-blue.svg)](https://www.python.org/)
